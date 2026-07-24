@@ -1,0 +1,12 @@
+pre-commit
+flake8
+flake8-async
+flake8-bugbear
+flake8-pyproject
+ruff
+pylint
+pyright[nodejs]
+mypy
+pytest
+
+types-redis

@@ -1,0 +1,39 @@
+[tool.flake8]
+max-line-length = 99
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+	"Q000",		# using single quotes
+	"D",		# missing docstrings
+
+	"CPY001",	# missing copyright
+
+	"I001",		# unsorted imports
+	"S101",		# use of assert
+]
+
+[tool.pylint.main]
+jobs = 0
+
+[tool.pylint.format]
+max-line-length = 99
+
+[tool.pylint."message control"]
+disable = [
+	"missing-docstring",
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+
+[tool.mypy]
+strict = true
+check_untyped_defs = true
