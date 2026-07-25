@@ -46,13 +46,14 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
         *,
         reverse: bool = False,
     ) -> Iterator[tuple[str, SchemaT]]:
-        xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
-
         if min_id is None:
-            min_id = '+' if reverse else '-'
+            min_id = '-'
         if max_id is None:
-            max_id = '-' if reverse else '+'
+            max_id = '+'
+        if reverse:
+            min_id, max_id = max_id, min_id
 
+        xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
         for key, mapping in xrange(self._key_path, min_id, max_id, count=count):
             yield key, self._converts.deserialize(mapping)
 
