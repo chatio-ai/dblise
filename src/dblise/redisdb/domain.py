@@ -1,12 +1,12 @@
 
 from typing import override
 
-from dblise.schemas import Entity
+from dblise.schemas import Domain
 
 from .common import Redis
 
 
-class RedisDomain(Entity):
+class RedisDomain(Domain):
 
     def __init__(self, redis_db: Redis, key_path: str) -> None:
         self._redis_db = redis_db

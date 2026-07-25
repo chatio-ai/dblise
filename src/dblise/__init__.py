@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 
 from .schemas import Schema
-from .schemas import Entity
+from .schemas import Domain
 from .schemas import Record
 from .schemas import Lookup
 from .schemas import Scores
@@ -12,7 +12,7 @@ from .schemas import Stream
 class Facade(ABC):
 
     @abstractmethod
-    def domain(self, key_path: str) -> Entity:
+    def domain(self, key_path: str) -> Domain:
         ...
 
     @abstractmethod

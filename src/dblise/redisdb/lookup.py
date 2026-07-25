@@ -1,4 +1,6 @@
 
+from typing import override
+
 from dblise.schemas import Schema
 from dblise.schemas import Record
 from dblise.schemas import Lookup
@@ -15,5 +17,6 @@ class RedisLookup[SchemaT: Schema](RedisDomain, Lookup[SchemaT]):
         super().__init__(redis_db, key_path)
         self._converts = converts
 
+    @override
     def lookup(self, key: str) -> Record[SchemaT]:
         return RedisRecord(self._redis_db, f'{self._key_path}:{key}', self._converts)

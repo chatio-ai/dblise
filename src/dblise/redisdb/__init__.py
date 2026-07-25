@@ -4,7 +4,7 @@ from typing import override
 from redis import Redis
 
 from dblise.schemas import Schema
-from dblise.schemas import Entity
+from dblise.schemas import Domain
 from dblise.schemas import Record
 from dblise.schemas import Lookup
 from dblise.schemas import Scores
@@ -34,7 +34,7 @@ class RedisFacade(Facade):
         return RedisCodecs(obj_type, self._n_digits)
 
     @override
-    def domain(self, key_path: str) -> Entity:
+    def domain(self, key_path: str) -> Domain:
         return RedisDomain(self._redis_db, key_path)
 
     @override

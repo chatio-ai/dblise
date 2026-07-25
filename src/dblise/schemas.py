@@ -25,6 +25,10 @@ class Entity(ABC):
         ...
 
 
+class Domain(Entity, ABC):
+    pass
+
+
 class Record[SchemaT](Entity, AbstractContextManager[SchemaT], ABC):
     @abstractmethod
     def fields(self) -> SchemaT:
