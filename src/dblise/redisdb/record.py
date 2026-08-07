@@ -25,14 +25,19 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
 
         self._pipeline: Pipeline | None = None
 
-    def _load(self) -> SchemaT:
-        return self._converts.deserialize(self._redis_db.hgetall(self._key_path))
+    def _load(self, redis_db: Redis | None = None) -> SchemaT:
+        if redis_db is None:
+            redis_db = self._redis_db
+        return self._converts.deserialize(redis_db.hgetall(self._key_path))
 
     def _open(self) -> SchemaT:
+        if self._pipeline is not None:
+            raise RuntimeError
+
         self._pipeline = self._redis_db.pipeline()
         self._pipeline.watch(self._key_path)
 
-        return self._load()
+        return self._load(self._pipeline)
 
     def _save(self, instance: SchemaT) -> None:
         if self._pipeline is None:
@@ -45,9 +50,12 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
 
     def _drop(self) -> None:
         if self._pipeline is None:
-            raise RuntimeError
+            return
 
-        self._pipeline.unwatch()
+        try:
+            self._pipeline.reset()
+        finally:
+            self._pipeline = None
 
     @override
     def fields(self) -> SchemaT:
@@ -55,9 +63,16 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
 
     @override
     def __enter__(self) -> SchemaT:
-        if self._instance is None:
+        if self._instance is not None:
+            raise RuntimeError
+
+        try:
             self._original = self._open()
             self._instance = replace(self._original)
+        except BaseException:
+            self._drop()
+            raise
+
         return self._instance
 
     @override
@@ -70,14 +85,11 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
         if self._instance is None:
             return
 
-        if exc_type is not None or exc_value is not None:
+        try:
+            if exc_value is None and self._instance != self._original:
+                self._save(self._instance)
+        finally:
+            self._original = None
             self._instance = None
 
-        if self._instance is None or self._instance == self._original:
             self._drop()
-        else:
-            self._save(self._instance)
-
-        self._pipeline = None
-        self._instance = None
-        self._original = None
