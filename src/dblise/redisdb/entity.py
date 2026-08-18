@@ -18,4 +18,4 @@ class RedisEntity(Entity):
 
     @override
     def delete(self) -> bool:
-        return bool(self._redis_db.delete(self._key_path))
+        return bool(self._redis_db.unlink(self._key_path))

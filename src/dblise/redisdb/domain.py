@@ -15,11 +15,13 @@ class RedisDomain(Domain):
 
     @override
     def exists(self) -> bool:
-        return any(self._redis_db.scan_iter(self._key_glob))
+        for _ in self._redis_db.scan_iter(self._key_glob):
+            return True
+        return False
 
     @override
     def delete(self) -> bool:
-        cleanup = tuple(self._redis_db.scan_iter(self._key_glob))
-        if cleanup:
-            self._redis_db.delete(*cleanup)
-        return bool(cleanup)
+        keys = list(self._redis_db.scan_iter(self._key_glob))
+        if keys:
+            self._redis_db.unlink(*keys)
+        return bool(keys)
