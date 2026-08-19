@@ -1,10 +1,10 @@
-
 from abc import ABC, abstractmethod
 
+from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Iterable
 
-from contextlib import AbstractContextManager
+from contextlib import contextmanager
 
 from dataclasses import dataclass
 
@@ -28,9 +28,18 @@ class Domain(Entity, ABC):
     pass
 
 
-class Record[SchemaT](Entity, AbstractContextManager[SchemaT], ABC):
+class Record[SchemaT](Entity, ABC):
     @abstractmethod
     def fields(self) -> SchemaT:
+        ...
+
+    @abstractmethod
+    def assign(self, instance: SchemaT) -> None:
+        ...
+
+    @abstractmethod
+    @contextmanager
+    def modify(self) -> Generator[SchemaT]:
         ...
 
 
