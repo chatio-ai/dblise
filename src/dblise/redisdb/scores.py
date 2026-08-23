@@ -13,10 +13,6 @@ from .entity import RedisEntity
 class RedisScores(RedisEntity, Scores):
 
     @override
-    def __len__(self) -> int:
-        return self._redis_db.zcard(self._key_path)
-
-    @override
     def __iter__(self) -> Iterator[str]:
         yield from self.values()
 
@@ -40,6 +36,10 @@ class RedisScores(RedisEntity, Scores):
     @override
     def count(self) -> int:
         return self._redis_db.zcount(self._key_path, -math.inf, math.inf)
+
+    @override
+    def len(self) -> int:
+        return self._redis_db.zcard(self._key_path)
 
     @override
     def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:

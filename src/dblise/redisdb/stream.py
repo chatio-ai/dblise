@@ -18,7 +18,7 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
         self._converts: RedisCodecs[SchemaT] = converts
 
     @override
-    def __len__(self) -> int:
+    def len(self) -> int:
         return self._redis_db.xlen(self._key_path)
 
     @override
@@ -58,8 +58,10 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
             yield key, self._converts.deserialize(mapping)
 
     @override
-    def append(self, instance: SchemaT, entry_id: str = '*') -> None:
-        self._redis_db.xadd(self._key_path, self._converts.serialize(instance), id=entry_id)
+    def append(self, instance: SchemaT, entry_id: str = '*') -> str:
+        _ = self._redis_db.xadd(self._key_path, self._converts.serialize(instance), id=entry_id)
+        assert isinstance(_, str)
+        return _
 
     @override
     def remove(self, entry_id: str) -> bool:

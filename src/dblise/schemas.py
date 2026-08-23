@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 from collections.abc import Iterator
 from collections.abc import Iterable
-from collections.abc import Sized
 
 from contextlib import AbstractContextManager
 
@@ -41,7 +40,7 @@ class Lookup[SchemaT](Entity, ABC):
         ...
 
 
-class Scores(Entity, Sized, Iterable[str], ABC):
+class Scores(Entity, Iterable[str], ABC):
     @abstractmethod
     def values(self, *, reverse: bool = False) -> Iterator[str]:
         ...
@@ -63,6 +62,10 @@ class Scores(Entity, Sized, Iterable[str], ABC):
         ...
 
     @abstractmethod
+    def len(self) -> int:
+        ...
+
+    @abstractmethod
     def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
         ...
 
@@ -71,7 +74,7 @@ class Scores(Entity, Sized, Iterable[str], ABC):
         ...
 
 
-class Stream[SchemaT](Entity, Sized, Iterable[SchemaT], ABC):
+class Stream[SchemaT](Entity, Iterable[SchemaT], ABC):
     @abstractmethod
     def items(
         self,
@@ -95,7 +98,11 @@ class Stream[SchemaT](Entity, Sized, Iterable[SchemaT], ABC):
         ...
 
     @abstractmethod
-    def append(self, instance: SchemaT, entry_id: str = '*') -> None:
+    def len(self) -> int:
+        ...
+
+    @abstractmethod
+    def append(self, instance: SchemaT, entry_id: str = '*') -> str:
         ...
 
     @abstractmethod
