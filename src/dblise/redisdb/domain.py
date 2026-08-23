@@ -14,14 +14,14 @@ class RedisDomain(Domain):
         self._key_glob = f'{key_path}:*'
 
     @override
-    def exists(self) -> bool:
-        for _ in self._redis_db.scan_iter(self._key_glob):
+    async def exists(self) -> bool:
+        async for _ in self._redis_db.scan_iter(self._key_glob):
             return True
         return False
 
     @override
-    def delete(self) -> bool:
-        keys = list(self._redis_db.scan_iter(self._key_glob))
+    async def delete(self) -> bool:
+        keys = [_ async for _ in self._redis_db.scan_iter(self._key_glob)]
         if keys:
-            self._redis_db.unlink(*keys)
+            await self._redis_db.unlink(*keys)
         return bool(keys)

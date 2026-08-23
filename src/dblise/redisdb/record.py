@@ -1,7 +1,6 @@
-from collections.abc import Generator
 
-from contextlib import contextmanager
-
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from dataclasses import replace
 
 from typing import override
@@ -20,36 +19,37 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
         super().__init__(redis_db, key_path)
         self._converts: RedisCodecs[SchemaT] = converts
 
-    def _load(self, redis_db: Redis) -> SchemaT:
-        return self._converts.deserialize(redis_db.hgetall(self._key_path))
+    async def _load(self, redis_db: Redis) -> SchemaT:
+        return self._converts.deserialize(await redis_db.hgetall(self._key_path))
 
     @override
-    def fields(self) -> SchemaT:
-        return self._load(self._redis_db)
+    async def fields(self) -> SchemaT:
+        return await self._load(self._redis_db)
 
-    def _save(self, redis_db: Redis, instance: SchemaT) -> None:
+    async def _save(self, redis_db: Redis, instance: SchemaT) -> None:
         mapping = self._converts.serialize(instance)
         missing = self._converts.missing_at(mapping)
         if mapping:
-            redis_db.hmset(self._key_path, mapping)
+            await redis_db.hmset(self._key_path, mapping)
         if missing:
-            redis_db.hdel(self._key_path, *missing)
+            await redis_db.hdel(self._key_path, *missing)
 
     @override
-    def assign(self, instance: SchemaT) -> None:
-        with self._redis_db.pipeline() as pipeline:
-            self._save(pipeline, instance)
-            pipeline.execute()
+    async def assign(self, instance: SchemaT) -> None:
+        async with self._redis_db.pipeline() as pipeline:
+            await self._save(pipeline, instance)
+            await pipeline.execute()
 
     @override
-    @contextmanager
-    def modify(self) -> Generator[SchemaT]:
-        with self._redis_db.pipeline() as pipeline:
-            pipeline.watch(self._key_path)
-            original = self._load(pipeline)
+    @asynccontextmanager
+    # pylint: disable=invalid-overridden-method
+    async def modify(self) -> AsyncGenerator[SchemaT]:
+        async with self._redis_db.pipeline() as pipeline:
+            await pipeline.watch(self._key_path)
+            original = await self._load(pipeline)
             instance = replace(original)
             yield instance
             if instance != original:
                 pipeline.multi()
-                self._save(pipeline, instance)
-                pipeline.execute()
+                await self._save(pipeline, instance)
+                await pipeline.execute()

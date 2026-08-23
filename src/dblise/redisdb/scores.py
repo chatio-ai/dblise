@@ -1,7 +1,7 @@
 
 import math
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 
 from typing import override
 
@@ -13,38 +13,42 @@ from .entity import RedisEntity
 class RedisScores(RedisEntity, Scores):
 
     @override
-    def __iter__(self) -> Iterator[str]:
-        yield from self.values()
+    def __aiter__(self) -> AsyncIterator[str]:
+        return self.values()
 
     @override
-    def values(self, *, reverse: bool = False) -> Iterator[str]:
-        yield from self._redis_db.zrange(self._key_path, 0, -1, desc=reverse)
+    # pylint: disable=invalid-overridden-method
+    async def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
+        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse):
+            yield _
 
     @override
-    def scores(self, *, reverse: bool = False) -> Iterator[tuple[str, float]]:
-        yield from self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True)
+    # pylint: disable=invalid-overridden-method
+    async def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
+        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True):
+            yield _
 
     @override
-    def index(self, key: str, *, reverse: bool = False) -> int | None:
+    async def index(self, key: str, *, reverse: bool = False) -> int | None:
         zrank = self._redis_db.zrevrank if reverse else self._redis_db.zrank
-        return zrank(self._key_path, key)
+        return await zrank(self._key_path, key)
 
     @override
-    def score(self, key: str) -> float | None:
-        return self._redis_db.zscore(self._key_path, key)
+    async def score(self, key: str) -> float | None:
+        return await self._redis_db.zscore(self._key_path, key)
 
     @override
-    def count(self) -> int:
-        return self._redis_db.zcount(self._key_path, -math.inf, math.inf)
+    async def count(self) -> int:
+        return await self._redis_db.zcount(self._key_path, -math.inf, math.inf)
 
     @override
-    def len(self) -> int:
-        return self._redis_db.zcard(self._key_path)
+    async def len(self) -> int:
+        return await self._redis_db.zcard(self._key_path)
 
     @override
-    def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
-        self._redis_db.zadd(self._key_path, {key: score}, xx=xx, nx=nx)
+    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
+        await self._redis_db.zadd(self._key_path, {key: score}, xx=xx, nx=nx)
 
     @override
-    def remove(self, key: str) -> bool:
-        return bool(self._redis_db.zrem(self._key_path, key))
+    async def remove(self, key: str) -> bool:
+        return bool(await self._redis_db.zrem(self._key_path, key))

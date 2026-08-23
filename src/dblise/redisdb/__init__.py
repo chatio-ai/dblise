@@ -1,7 +1,7 @@
 
 from typing import override
 
-from redis import Redis
+from redis.asyncio import Redis
 
 from dblise.schemas import Schema
 from dblise.schemas import Domain

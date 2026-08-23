@@ -1,10 +1,11 @@
+
 from abc import ABC, abstractmethod
 
-from collections.abc import Generator
-from collections.abc import Iterator
-from collections.abc import Iterable
+from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator
+from collections.abc import AsyncIterable
 
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 
 from dataclasses import dataclass
 
@@ -16,11 +17,11 @@ class Schema:
 
 class Entity(ABC):
     @abstractmethod
-    def exists(self) -> bool:
+    async def exists(self) -> bool:
         ...
 
     @abstractmethod
-    def delete(self) -> bool:
+    async def delete(self) -> bool:
         ...
 
 
@@ -30,16 +31,16 @@ class Domain(Entity, ABC):
 
 class Record[SchemaT](Entity, ABC):
     @abstractmethod
-    def fields(self) -> SchemaT:
+    async def fields(self) -> SchemaT:
         ...
 
     @abstractmethod
-    def assign(self, instance: SchemaT) -> None:
+    async def assign(self, instance: SchemaT) -> None:
         ...
 
     @abstractmethod
-    @contextmanager
-    def modify(self) -> Generator[SchemaT]:
+    @asynccontextmanager
+    def modify(self) -> AsyncGenerator[SchemaT]:
         ...
 
 
@@ -49,41 +50,41 @@ class Lookup[SchemaT](Entity, ABC):
         ...
 
 
-class Scores(Entity, Iterable[str], ABC):
+class Scores(Entity, AsyncIterable[str], ABC):
     @abstractmethod
-    def values(self, *, reverse: bool = False) -> Iterator[str]:
+    def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
         ...
 
     @abstractmethod
-    def scores(self, *, reverse: bool = False) -> Iterator[tuple[str, float]]:
+    def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
         ...
 
     @abstractmethod
-    def index(self, key: str, *, reverse: bool = False) -> int | None:
+    async def index(self, key: str, *, reverse: bool = False) -> int | None:
         ...
 
     @abstractmethod
-    def score(self, key: str) -> float | None:
+    async def score(self, key: str) -> float | None:
         ...
 
     @abstractmethod
-    def count(self) -> int:
+    async def count(self) -> int:
         ...
 
     @abstractmethod
-    def len(self) -> int:
+    async def len(self) -> int:
         ...
 
     @abstractmethod
-    def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
+    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
         ...
 
     @abstractmethod
-    def remove(self, key: str) -> bool:
+    async def remove(self, key: str) -> bool:
         ...
 
 
-class Stream[SchemaT](Entity, Iterable[SchemaT], ABC):
+class Stream[SchemaT](Entity, AsyncIterable[SchemaT], ABC):
     @abstractmethod
     def items(
         self,
@@ -92,7 +93,7 @@ class Stream[SchemaT](Entity, Iterable[SchemaT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Iterator[tuple[str, SchemaT]]:
+    ) -> AsyncIterator[tuple[str, SchemaT]]:
         ...
 
     @abstractmethod
@@ -103,17 +104,17 @@ class Stream[SchemaT](Entity, Iterable[SchemaT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Iterator[SchemaT]:
+    ) -> AsyncIterator[SchemaT]:
         ...
 
     @abstractmethod
-    def len(self) -> int:
+    async def len(self) -> int:
         ...
 
     @abstractmethod
-    def append(self, instance: SchemaT, entry_id: str = '*') -> str:
+    async def append(self, instance: SchemaT, entry_id: str = '*') -> str:
         ...
 
     @abstractmethod
-    def remove(self, entry_id: str) -> bool:
+    async def remove(self, entry_id: str) -> bool:
         ...

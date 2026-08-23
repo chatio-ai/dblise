@@ -13,9 +13,9 @@ class RedisEntity(Entity):
         self._key_path = key_path
 
     @override
-    def exists(self) -> bool:
-        return bool(self._redis_db.exists(self._key_path))
+    async def exists(self) -> bool:
+        return bool(await self._redis_db.exists(self._key_path))
 
     @override
-    def delete(self) -> bool:
-        return bool(self._redis_db.unlink(self._key_path))
+    async def delete(self) -> bool:
+        return bool(await self._redis_db.unlink(self._key_path))

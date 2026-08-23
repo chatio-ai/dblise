@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from typing import TYPE_CHECKING
 
-from redis import client
+from redis.asyncio import client
 
 
 type FieldDict = dict[str, str | bool | int | float | Decimal | None]
