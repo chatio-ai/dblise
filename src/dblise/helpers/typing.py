@@ -16,6 +16,9 @@ from typing import Self
 from types import UnionType
 from types import NoneType
 
+from dblise.schemas import Fields
+from dblise.schemas import Entity
+
 
 @dataclass
 class TypeId:
@@ -56,3 +59,26 @@ class FieldTypeId(TypeId):
 
 def field_type_ids(cls: type) -> dict[str, FieldTypeId]:
     return _type_ids(cls, FieldTypeId.parse)
+
+
+@dataclass
+class KeyTypeId(TypeId):
+    entity: type[Entity]
+    fields: type[Fields] | None
+
+    @classmethod
+    def parse(cls, type_def: type) -> Self:
+        origin = get_origin(type_def)
+        params = get_args(type_def)
+
+        if not origin:
+            return cls(entity=type_def, fields=None)
+
+        if origin and len(params) == 1:
+            return cls(entity=origin, fields=params[0])
+
+        raise TypeError(type_def)
+
+
+def key_type_ids(cls: type) -> dict[str, KeyTypeId]:
+    return _type_ids(cls, KeyTypeId.parse)

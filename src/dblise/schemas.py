@@ -124,3 +124,8 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
     @abstractmethod
     async def remove(self, entry_id: str) -> bool:
         ...
+
+
+@dataclass(frozen=True)
+class Schema:
+    pass
