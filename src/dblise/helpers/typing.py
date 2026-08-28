@@ -1,4 +1,7 @@
 
+from collections.abc import Callable
+
+from dataclasses import is_dataclass
 from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import Field
@@ -16,6 +19,23 @@ from types import NoneType
 
 @dataclass
 class TypeId:
+    pass
+
+
+def _type_ids[TypeIdT: TypeId](cls: type, parse: Callable[[type], TypeIdT]) -> dict[str, TypeIdT]:
+    if not is_dataclass(cls):
+        raise TypeError(cls)
+
+    hints = get_type_hints(cls)
+
+    def _type_id[T](field: Field[T]) -> TypeIdT:
+        return parse(hints[field.name])
+
+    return {field.name: _type_id(field) for field in fields(cls)}
+
+
+@dataclass
+class FieldTypeId(TypeId):
     raw_type: type
     optional: bool
 
@@ -34,10 +54,5 @@ class TypeId:
         raise TypeError(type_def)
 
 
-def type_ids(cls: type) -> dict[str, TypeId]:
-    hints = get_type_hints(cls)
-
-    def _type_id[T](field: Field[T]) -> TypeId:
-        return TypeId.parse(hints[field.name])
-
-    return {field.name: _type_id(field) for field in fields(cls)}
+def field_type_ids(cls: type) -> dict[str, FieldTypeId]:
+    return _type_ids(cls, FieldTypeId.parse)

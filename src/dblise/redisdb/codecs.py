@@ -24,7 +24,7 @@ class RedisCodecs[FieldsT: Fields]:
     def __init__(self, data_cls: type[FieldsT], n_digits: int | None = None) -> None:
         self._n_digits = n_digits
         self._data_cls = data_cls
-        self._type_ids = typing.type_ids(self._data_cls)
+        self._type_ids = typing.field_type_ids(self._data_cls)
 
     def missing_at(self, mapping: _RedisDict) -> set[str]:
         return self._type_ids.keys() - mapping.keys()
