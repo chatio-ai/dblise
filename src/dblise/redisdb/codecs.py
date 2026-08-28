@@ -37,25 +37,25 @@ class RedisCodecs[SchemaT: Schema]:
             if value is None:
                 continue
 
-            raw_type, optional = typing.find_type(field)
-            match raw_type:
-                case _ if raw_type is str:
+            type_id = typing.find_type(field)
+            match type_id:
+                case _ if type_id.raw_type is str:
                     assert isinstance(value, str)
                     result[field.name] = value
-                case _ if raw_type is bool:
+                case _ if type_id.raw_type is bool:
                     assert isinstance(value, bool)
                     result[field.name] = str(int(value))
-                case _ if raw_type is int:
+                case _ if type_id.raw_type is int:
                     assert isinstance(value, int)
                     result[field.name] = str(value)
-                case _ if raw_type is float:
+                case _ if type_id.raw_type is float:
                     assert isinstance(value, float)
                     result[field.name] = str(value)
-                case _ if raw_type is Decimal:
+                case _ if type_id.raw_type is Decimal:
                     assert isinstance(value, Decimal)
                     result[field.name] = codecs.decimal_to_str(value, self._n_digits)
                 case _:
-                    raise TypeError(raw_type, optional)
+                    raise TypeError(type_id)
 
         return result
 
@@ -64,21 +64,21 @@ class RedisCodecs[SchemaT: Schema]:
         for field in fields(self._obj_type):
             value = mapping.get(field.name)
 
-            raw_type, optional = typing.find_type(field)
-            match raw_type, value:
+            type_id = typing.find_type(field)
+            match type_id, value:
                 case _, None:
-                    result[field.name] = None if optional else raw_type()
-                case _ if raw_type is str:
+                    result[field.name] = None if type_id.optional else type_id.raw_type()
+                case _ if type_id.raw_type is str:
                     result[field.name] = value
-                case _ if raw_type is bool:
+                case _ if type_id.raw_type is bool:
                     result[field.name] = bool(int(value))
-                case _ if raw_type is int:
+                case _ if type_id.raw_type is int:
                     result[field.name] = int(value)
-                case _ if raw_type is float:
+                case _ if type_id.raw_type is float:
                     result[field.name] = float(value)
-                case _ if raw_type is Decimal:
+                case _ if type_id.raw_type is Decimal:
                     result[field.name] = codecs.str_to_decimal(value, self._n_digits)
                 case _:
-                    raise TypeError(raw_type, optional)
+                    raise TypeError(type_id)
 
         return self._obj_type(**result)

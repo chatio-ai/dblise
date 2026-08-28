@@ -1,17 +1,30 @@
 
+from dataclasses import dataclass
 from dataclasses import Field
 
 from types import UnionType
 from types import NoneType
 
 
-def find_type[T](field: Field[T]) -> tuple[type, bool]:
+@dataclass
+class TypeId:
+    raw_type: type
+    optional: bool
+
+
+def find_type[T](field: Field[T]) -> TypeId:
     assert isinstance(field.type, type | UnionType)
 
     if not isinstance(field.type, UnionType):
-        return field.type, False
+        return TypeId(
+            raw_type=field.type,
+            optional=False,
+        )
 
     if field.type.__args__[1:] == (NoneType,):
-        return field.type.__args__[0], True
+        return TypeId(
+            raw_type=field.type.__args__[0],
+            optional=True,
+        )
 
     raise TypeError
