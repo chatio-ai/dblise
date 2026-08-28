@@ -4,12 +4,11 @@ from dataclasses import fields
 
 from decimal import Decimal
 
-from types import UnionType
-from types import NoneType
-
 from typing import TYPE_CHECKING
 
 from dblise.schemas import Schema
+from dblise.helpers import typing
+from dblise.helpers import codecs
 
 from .common import FieldDict
 from .common import RedisDict
@@ -21,30 +20,11 @@ else:
     _RedisDict = RedisDict
 
 
-def str_to_decimal(value: str, n_digits: int | None = None) -> Decimal:
-    num = Decimal(value)
-    return num if n_digits is None else round(num, n_digits)
-
-
-def decimal_to_str(num: Decimal, n_digits: int | None = None) -> str:
-    num = num if n_digits is None else round(num, n_digits)
-    return format(num.normalize(), 'zf')
-
-
 class RedisCodecs[SchemaT: Schema]:
 
     def __init__(self, obj_type: type[SchemaT], n_digits: int | None = None) -> None:
         self._n_digits = n_digits
         self._obj_type = obj_type
-
-    def _find_type(self, field: type | UnionType) -> tuple[type, bool]:
-        if not isinstance(field, UnionType):
-            return field, False
-
-        if field.__args__[1:] == (NoneType,):
-            return field.__args__[0], True
-
-        raise TypeError
 
     def missing_at(self, mapping: _RedisDict) -> list[str]:
         return [field.name for field in fields(self._obj_type) if field.name not in mapping]
@@ -57,8 +37,7 @@ class RedisCodecs[SchemaT: Schema]:
             if value is None:
                 continue
 
-            assert isinstance(field.type, type | UnionType)
-            raw_type, optional = self._find_type(field.type)
+            raw_type, optional = typing.find_type(field)
             match raw_type:
                 case _ if raw_type is str:
                     assert isinstance(value, str)
@@ -74,7 +53,7 @@ class RedisCodecs[SchemaT: Schema]:
                     result[field.name] = str(value)
                 case _ if raw_type is Decimal:
                     assert isinstance(value, Decimal)
-                    result[field.name] = decimal_to_str(value, self._n_digits)
+                    result[field.name] = codecs.decimal_to_str(value, self._n_digits)
                 case _:
                     raise TypeError(raw_type, optional)
 
@@ -85,9 +64,7 @@ class RedisCodecs[SchemaT: Schema]:
         for field in fields(self._obj_type):
             value = mapping.get(field.name)
 
-            assert isinstance(field.type, type | UnionType)
-            raw_type, optional = self._find_type(field.type)
-
+            raw_type, optional = typing.find_type(field)
             match raw_type, value:
                 case _, None:
                     result[field.name] = None if optional else raw_type()
@@ -100,7 +77,7 @@ class RedisCodecs[SchemaT: Schema]:
                 case _ if raw_type is float:
                     result[field.name] = float(value)
                 case _ if raw_type is Decimal:
-                    result[field.name] = str_to_decimal(value, self._n_digits)
+                    result[field.name] = codecs.str_to_decimal(value, self._n_digits)
                 case _:
                     raise TypeError(raw_type, optional)
 

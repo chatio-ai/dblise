@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from dblise.redisdb.codecs import decimal_to_str
+from dblise.helpers.codecs import decimal_to_str
 
 # ruff: noqa: FURB157
 # ruff: noqa: RUF032
