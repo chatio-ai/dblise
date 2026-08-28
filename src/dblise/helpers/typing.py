@@ -3,6 +3,11 @@ from dataclasses import dataclass
 from dataclasses import fields
 from dataclasses import Field
 
+from typing import get_type_hints
+from typing import get_origin
+from typing import get_args
+
+from typing import Union
 from typing import Self
 
 from types import UnionType
@@ -15,26 +20,24 @@ class TypeId:
     optional: bool
 
     @classmethod
-    def parse(cls, type_def: type | UnionType) -> Self:
+    def parse(cls, type_def: type) -> Self:
+        origin = get_origin(type_def)
+        params = get_args(type_def)
 
-        if not isinstance(type_def, UnionType):
-            return cls(
-                raw_type=type_def,
-                optional=False,
-            )
+        if origin not in (Union, UnionType):
+            return cls(raw_type=type_def, optional=False)
 
-        if type_def.__args__[1:] == (NoneType,):
-            return cls(
-                raw_type=type_def.__args__[0],
-                optional=True,
-            )
+        values = tuple(param for param in params if param != NoneType)
+        if len(values) != len(params) and len(values) == 1:
+            return cls(raw_type=values[0], optional=True)
 
-        raise TypeError
+        raise TypeError(type_def)
 
 
 def type_ids(cls: type) -> dict[str, TypeId]:
+    hints = get_type_hints(cls)
+
     def _type_id[T](field: Field[T]) -> TypeId:
-        assert isinstance(field.type, type | UnionType)
-        return TypeId.parse(field.type)
+        return TypeId.parse(hints[field.name])
 
     return {field.name: _type_id(field) for field in fields(cls)}
