@@ -16,17 +16,21 @@ class Facade(ABC):
         ...
 
     @abstractmethod
-    def record[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Record[FieldsT]:
+    def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
         ...
 
     @abstractmethod
-    def lookup[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
+    def lookup[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
         ...
 
     @abstractmethod
-    def scores(self, key_path: str) -> Scores:
+    def scores(self, handle: str) -> Scores:
         ...
 
     @abstractmethod
-    def stream[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Stream[FieldsT]:
+    def stream[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Stream[FieldsT]:
+        ...
+
+    @abstractmethod
+    def handle(self, parent: str, child: str) -> str:
         ...

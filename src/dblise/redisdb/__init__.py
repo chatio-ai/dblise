@@ -38,17 +38,21 @@ class RedisFacade(Facade):
         return RedisDomain(self._redis_db, key_path)
 
     @override
-    def record[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Record[FieldsT]:
-        return RedisRecord(self._redis_db, key_path, self._codec(fields))
+    def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
+        return RedisRecord(self._redis_db, handle, self._codec(fields))
 
     @override
-    def lookup[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
-        return RedisLookup(self._redis_db, key_path, self._codec(fields))
+    def lookup[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
+        return RedisLookup(self._redis_db, handle, self._codec(fields))
 
     @override
-    def scores(self, key_path: str) -> Scores:
-        return RedisScores(self._redis_db, key_path)
+    def scores(self, handle: str) -> Scores:
+        return RedisScores(self._redis_db, handle)
 
     @override
-    def stream[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Stream[FieldsT]:
-        return RedisStream(self._redis_db, key_path, self._codec(fields))
+    def stream[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Stream[FieldsT]:
+        return RedisStream(self._redis_db, handle, self._codec(fields))
+
+    @override
+    def handle(self, parent: str, child: str) -> str:
+        return f'{parent}:{child}'
