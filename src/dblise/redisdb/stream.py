@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 
 from typing import override
 
-from dblise.schemas import Schema
+from dblise.schemas import Fields
 from dblise.schemas import Stream
 
 from .common import Redis
@@ -11,18 +11,18 @@ from .codecs import RedisCodecs
 from .entity import RedisEntity
 
 
-class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
+class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
-    def __init__(self, redis_db: Redis, key_path: str, converts: RedisCodecs[SchemaT]) -> None:
+    def __init__(self, redis_db: Redis, key_path: str, converts: RedisCodecs[FieldsT]) -> None:
         super().__init__(redis_db, key_path)
-        self._converts: RedisCodecs[SchemaT] = converts
+        self._converts: RedisCodecs[FieldsT] = converts
 
     @override
     async def len(self) -> int:
         return await self._redis_db.xlen(self._key_path)
 
     @override
-    def __aiter__(self) -> AsyncIterator[SchemaT]:
+    def __aiter__(self) -> AsyncIterator[FieldsT]:
         return self.values()
 
     @override
@@ -34,7 +34,7 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[SchemaT]:
+    ) -> AsyncIterator[FieldsT]:
         async for _, value in self.items(min_id, max_id, count, reverse=reverse):
             yield value
 
@@ -47,7 +47,7 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[tuple[str, SchemaT]]:
+    ) -> AsyncIterator[tuple[str, FieldsT]]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -60,9 +60,9 @@ class RedisStream[SchemaT: Schema](RedisEntity, Stream[SchemaT]):
             yield key, self._converts.deserialize(mapping)
 
     @override
-    async def append(self, instance: SchemaT, entry_id: str = '*') -> str:
+    async def append(self, value: FieldsT, entry_id: str = '*') -> str:
         _ = await self._redis_db.xadd(
-                self._key_path, self._converts.serialize(instance), id=entry_id)
+                self._key_path, self._converts.serialize(value), id=entry_id)
         assert isinstance(_, str)
         return _
 

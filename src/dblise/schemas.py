@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Schema:
+class Fields:
     pass
 
 
@@ -29,24 +29,24 @@ class Domain(Entity, ABC):
     pass
 
 
-class Record[SchemaT](Entity, ABC):
+class Record[FieldsT](Entity, ABC):
     @abstractmethod
-    async def fields(self) -> SchemaT:
+    async def value(self) -> FieldsT:
         ...
 
     @abstractmethod
-    async def assign(self, instance: SchemaT) -> None:
+    async def assign(self, value: FieldsT) -> None:
         ...
 
     @abstractmethod
     @asynccontextmanager
-    def modify(self) -> AsyncGenerator[SchemaT]:
+    def modify(self) -> AsyncGenerator[FieldsT]:
         ...
 
 
-class Lookup[SchemaT](Entity, ABC):
+class Lookup[FieldsT](Entity, ABC):
     @abstractmethod
-    def lookup(self, key: str) -> Record[SchemaT]:
+    def lookup(self, key: str) -> Record[FieldsT]:
         ...
 
 
@@ -84,7 +84,7 @@ class Scores(Entity, AsyncIterable[str], ABC):
         ...
 
 
-class Stream[SchemaT](Entity, AsyncIterable[SchemaT], ABC):
+class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
     @abstractmethod
     def items(
         self,
@@ -93,7 +93,7 @@ class Stream[SchemaT](Entity, AsyncIterable[SchemaT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[tuple[str, SchemaT]]:
+    ) -> AsyncIterator[tuple[str, FieldsT]]:
         ...
 
     @abstractmethod
@@ -104,7 +104,7 @@ class Stream[SchemaT](Entity, AsyncIterable[SchemaT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[SchemaT]:
+    ) -> AsyncIterator[FieldsT]:
         ...
 
     @abstractmethod
@@ -112,7 +112,7 @@ class Stream[SchemaT](Entity, AsyncIterable[SchemaT], ABC):
         ...
 
     @abstractmethod
-    async def append(self, instance: SchemaT, entry_id: str = '*') -> str:
+    async def append(self, value: FieldsT, entry_id: str = '*') -> str:
         ...
 
     @abstractmethod

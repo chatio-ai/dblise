@@ -1,7 +1,7 @@
 
 from abc import ABC, abstractmethod
 
-from .schemas import Schema
+from .schemas import Fields
 from .schemas import Domain
 from .schemas import Record
 from .schemas import Lookup
@@ -16,11 +16,11 @@ class Facade(ABC):
         ...
 
     @abstractmethod
-    def record[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Record[SchemaT]:
+    def record[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Record[FieldsT]:
         ...
 
     @abstractmethod
-    def lookup[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Lookup[SchemaT]:
+    def lookup[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
         ...
 
     @abstractmethod
@@ -28,5 +28,5 @@ class Facade(ABC):
         ...
 
     @abstractmethod
-    def stream[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Stream[SchemaT]:
+    def stream[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Stream[FieldsT]:
         ...

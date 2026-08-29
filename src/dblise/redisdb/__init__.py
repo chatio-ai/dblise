@@ -3,7 +3,7 @@ from typing import override
 
 from redis.asyncio import Redis
 
-from dblise.schemas import Schema
+from dblise.schemas import Fields
 from dblise.schemas import Domain
 from dblise.schemas import Record
 from dblise.schemas import Lookup
@@ -30,25 +30,25 @@ class RedisFacade(Facade):
         self._redis_db = Redis(host=host, port=port, db=0, decode_responses=True)
         self._n_digits = n_digits
 
-    def _codec[SchemaT: Schema](self, obj_type: type[SchemaT]) -> RedisCodecs[SchemaT]:
-        return RedisCodecs(obj_type, self._n_digits)
+    def _codec[FieldsT: Fields](self, fields: type[FieldsT]) -> RedisCodecs[FieldsT]:
+        return RedisCodecs(fields, self._n_digits)
 
     @override
     def domain(self, key_path: str) -> Domain:
         return RedisDomain(self._redis_db, key_path)
 
     @override
-    def record[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Record[SchemaT]:
-        return RedisRecord(self._redis_db, key_path, self._codec(obj_type))
+    def record[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Record[FieldsT]:
+        return RedisRecord(self._redis_db, key_path, self._codec(fields))
 
     @override
-    def lookup[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Lookup[SchemaT]:
-        return RedisLookup(self._redis_db, key_path, self._codec(obj_type))
+    def lookup[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
+        return RedisLookup(self._redis_db, key_path, self._codec(fields))
 
     @override
     def scores(self, key_path: str) -> Scores:
         return RedisScores(self._redis_db, key_path)
 
     @override
-    def stream[SchemaT: Schema](self, key_path: str, obj_type: type[SchemaT]) -> Stream[SchemaT]:
-        return RedisStream(self._redis_db, key_path, self._codec(obj_type))
+    def stream[FieldsT: Fields](self, key_path: str, fields: type[FieldsT]) -> Stream[FieldsT]:
+        return RedisStream(self._redis_db, key_path, self._codec(fields))

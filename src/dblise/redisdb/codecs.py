@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from typing import TYPE_CHECKING
 
-from dblise.schemas import Schema
+from dblise.schemas import Fields
 from dblise.helpers import typing
 from dblise.helpers import codecs
 
@@ -19,17 +19,17 @@ else:
     _RedisDict = RedisDict
 
 
-class RedisCodecs[SchemaT: Schema]:
+class RedisCodecs[FieldsT: Fields]:
 
-    def __init__(self, obj_type: type[SchemaT], n_digits: int | None = None) -> None:
+    def __init__(self, data_cls: type[FieldsT], n_digits: int | None = None) -> None:
         self._n_digits = n_digits
-        self._obj_type = obj_type
-        self._type_ids = typing.type_ids(self._obj_type)
+        self._data_cls = data_cls
+        self._type_ids = typing.type_ids(self._data_cls)
 
     def missing_at(self, mapping: _RedisDict) -> set[str]:
         return self._type_ids.keys() - mapping.keys()
 
-    def serialize(self, instance: SchemaT) -> _RedisDict:
+    def serialize(self, instance: FieldsT) -> _RedisDict:
         mapping = asdict(instance)
         result: _RedisDict = {}
         for name, type_id in self._type_ids.items():
@@ -58,7 +58,7 @@ class RedisCodecs[SchemaT: Schema]:
 
         return result
 
-    def deserialize(self, mapping: RedisDict) -> SchemaT:
+    def deserialize(self, mapping: RedisDict) -> FieldsT:
         result: FieldDict = {}
         for name, type_id in self._type_ids.items():
             value = mapping.get(name)
@@ -79,4 +79,4 @@ class RedisCodecs[SchemaT: Schema]:
                 case _:
                     raise TypeError(type_id)
 
-        return self._obj_type(**result)
+        return self._data_cls(**result)

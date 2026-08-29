@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from typing import override
 
-from dblise.schemas import Schema
+from dblise.schemas import Fields
 from dblise.schemas import Record
 
 from .common import Redis
@@ -13,20 +13,20 @@ from .codecs import RedisCodecs
 from .entity import RedisEntity
 
 
-class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
+class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
 
-    def __init__(self, redis_db: Redis, key_path: str, converts: RedisCodecs[SchemaT]) -> None:
+    def __init__(self, redis_db: Redis, key_path: str, converts: RedisCodecs[FieldsT]) -> None:
         super().__init__(redis_db, key_path)
-        self._converts: RedisCodecs[SchemaT] = converts
+        self._converts: RedisCodecs[FieldsT] = converts
 
-    async def _load(self, redis_db: Redis) -> SchemaT:
+    async def _load(self, redis_db: Redis) -> FieldsT:
         return self._converts.deserialize(await redis_db.hgetall(self._key_path))
 
     @override
-    async def fields(self) -> SchemaT:
+    async def value(self) -> FieldsT:
         return await self._load(self._redis_db)
 
-    async def _save(self, redis_db: Redis, instance: SchemaT) -> None:
+    async def _save(self, redis_db: Redis, instance: FieldsT) -> None:
         mapping = self._converts.serialize(instance)
         missing = self._converts.missing_at(mapping)
         if mapping:
@@ -35,15 +35,15 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
             await redis_db.hdel(self._key_path, *missing)
 
     @override
-    async def assign(self, instance: SchemaT) -> None:
+    async def assign(self, value: FieldsT) -> None:
         async with self._redis_db.pipeline() as pipeline:
-            await self._save(pipeline, instance)
+            await self._save(pipeline, value)
             await pipeline.execute()
 
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
-    async def modify(self) -> AsyncGenerator[SchemaT]:
+    async def modify(self) -> AsyncGenerator[FieldsT]:
         async with self._redis_db.pipeline() as pipeline:
             await pipeline.watch(self._key_path)
             original = await self._load(pipeline)
