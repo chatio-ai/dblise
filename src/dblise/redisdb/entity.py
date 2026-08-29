@@ -12,6 +12,11 @@ class RedisEntity(Entity):
         self._redis_db = redis_db
         self._key_path = key_path
 
+    @property
+    @override
+    def handle(self) -> str:
+        return self._key_path
+
     @override
     async def exists(self) -> bool:
         return bool(await self._redis_db.exists(self._key_path))
