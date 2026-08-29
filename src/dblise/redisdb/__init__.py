@@ -1,7 +1,11 @@
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from typing import Self
 from typing import override
 
-from redis.asyncio import Redis
+from redis.asyncio import client
 
 from dblise.schemas import Fields
 from dblise.schemas import Schema
@@ -13,6 +17,7 @@ from dblise import Facade
 
 from dblise.helpers.typing import entities
 
+from .common import Redis
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
 from .record import RedisRecord
@@ -26,9 +31,13 @@ class RedisFacade(Facade):
         self,
         host: str = 'localhost',
         port: int = 6379,
+        redis_db: Redis | None = None,
         n_digits: int | None = None,
     ) -> None:
-        self._redis_db = Redis(host=host, port=port, db=0, decode_responses=True)
+        if redis_db is None:
+            redis_db = client.Redis(host=host, port=port, db=0, decode_responses=True)
+
+        self._redis_db = redis_db
         self._n_digits = n_digits
 
     def _codec[FieldsT: Fields](self, fields: type[FieldsT]) -> RedisCodecs[FieldsT]:
@@ -67,3 +76,11 @@ class RedisFacade(Facade):
         if not keys:
             return False
         return bool(await self._redis_db.unlink(*keys))
+
+    @override
+    @asynccontextmanager
+    # pylint: disable=invalid-overridden-method
+    async def pipeline(self) -> AsyncGenerator[Self]:
+        async with self._redis_db.pipeline() as pipeline:
+            yield type(self)(redis_db=pipeline, n_digits=self._n_digits)
+            await pipeline.execute()
