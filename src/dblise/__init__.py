@@ -1,6 +1,9 @@
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
+from typing import Self
 from typing import cast
 
 from .helpers import typing
@@ -69,4 +72,9 @@ class Facade(ABC):
 
     @abstractmethod
     async def delete(self, schema: Schema) -> bool:
+        ...
+
+    @abstractmethod
+    @asynccontextmanager
+    def pipeline(self) -> AsyncGenerator[Self]:
         ...
