@@ -8,7 +8,6 @@ from .helpers import typing
 from .schemas import Fields
 from .schemas import Schema
 from .schemas import Entity
-from .schemas import Domain
 from .schemas import Record
 from .schemas import Lookup
 from .schemas import Scores
@@ -16,10 +15,6 @@ from .schemas import Stream
 
 
 class Facade(ABC):
-
-    @abstractmethod
-    def domain(self, key_path: str) -> Domain:
-        ...
 
     @abstractmethod
     def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
@@ -43,8 +38,6 @@ class Facade(ABC):
 
     def _entity(self, handle: str, type_id: typing.KeyTypeId) -> Entity:
         match type_id:
-            case _ if type_id.entity is Domain:
-                return self.domain(handle)
             case _ if type_id.entity is Record:
                 assert type_id.fields is not None
                 return self.record(handle, type_id.fields)
@@ -69,3 +62,11 @@ class Facade(ABC):
             result[name] = self._entity(self.handle(handle, name), type_id)
 
         return schema(**result)
+
+    @abstractmethod
+    async def exists(self, schema: Schema) -> bool:
+        ...
+
+    @abstractmethod
+    async def delete(self, schema: Schema) -> bool:
+        ...

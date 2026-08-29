@@ -4,15 +4,16 @@ from typing import override
 from redis.asyncio import Redis
 
 from dblise.schemas import Fields
-from dblise.schemas import Domain
+from dblise.schemas import Schema
 from dblise.schemas import Record
 from dblise.schemas import Lookup
 from dblise.schemas import Scores
 from dblise.schemas import Stream
 from dblise import Facade
 
+from dblise.helpers.typing import entities
+
 from .codecs import RedisCodecs
-from .domain import RedisDomain
 from .lookup import RedisLookup
 from .record import RedisRecord
 from .scores import RedisScores
@@ -34,10 +35,6 @@ class RedisFacade(Facade):
         return RedisCodecs(fields, self._n_digits)
 
     @override
-    def domain(self, key_path: str) -> Domain:
-        return RedisDomain(self._redis_db, key_path)
-
-    @override
     def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
         return RedisRecord(self._redis_db, handle, self._codec(fields))
 
@@ -56,3 +53,17 @@ class RedisFacade(Facade):
     @override
     def handle(self, parent: str, child: str) -> str:
         return f'{parent}:{child}'
+
+    @override
+    async def exists(self, schema: Schema) -> bool:
+        keys = [entity.handle for _, entity in entities(schema)]
+        if not keys:
+            return False
+        return bool(await self._redis_db.exists(*keys))
+
+    @override
+    async def delete(self, schema: Schema) -> bool:
+        keys = [entity.handle for _, entity in entities(schema)]
+        if not keys:
+            return False
+        return bool(await self._redis_db.unlink(*keys))

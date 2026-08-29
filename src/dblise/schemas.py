@@ -31,10 +31,6 @@ class Entity(ABC):
         ...
 
 
-class Domain(Entity, ABC):
-    pass
-
-
 class Record[FieldsT](Entity, ABC):
     @abstractmethod
     async def value(self) -> FieldsT:
