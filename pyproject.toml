@@ -13,6 +13,7 @@ ignore = [
 
 	"CPY001",	# missing copyright
 
+	"TC006",	# unquoted cast type
 	"I001",		# unsorted imports
 	"S101",		# use of assert
 ]
