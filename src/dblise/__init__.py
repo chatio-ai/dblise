@@ -89,5 +89,5 @@ class Facade(ABC):
 
     @abstractmethod
     @asynccontextmanager
-    def pipeline[ObjectT: Entity | Schema](self, obj: ObjectT) -> AsyncGenerator[ObjectT]:
+    def pipeline[*ObjectTs](self, *objs: *ObjectTs) -> AsyncGenerator[tuple[*ObjectTs]]:
         ...
