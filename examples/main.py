@@ -30,9 +30,9 @@ async def main() -> None:
     await schema.test.assign(Test('hello'))
     print(await schema.test.value())
 
-    async with facade.pipeline() as pipe:
-        await pipe.rebind(schema.test).value()
-        await pipe.rebind(schema.test).assign(Test('world'))
+    async with facade.pipeline(schema.test) as test:
+        await test.value()
+        await test.assign(Test('world'))
 
     print(await schema.test.value())
 
