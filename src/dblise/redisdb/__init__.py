@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from typing import override
+from typing import cast
 
 from redis.asyncio import client
 
@@ -80,10 +81,16 @@ class RedisFacade(Facade):
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
-    async def pipeline[ObjectT: Entity | Schema](self, obj: ObjectT) -> AsyncGenerator[ObjectT]:
+    async def pipeline[*ObjectTs](self, *objs: *ObjectTs) -> AsyncGenerator[tuple[*ObjectTs]]:
         if isinstance(self._redis_db, client.Pipeline):
             raise TypeError
         async with self._redis_db.pipeline() as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-            yield facade.rebind(obj)
+
+            def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
+                if not isinstance(obj, Entity | Schema):
+                    raise TypeError(obj)
+                return facade.rebind(obj)
+
+            yield cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
             await pipeline.execute()
