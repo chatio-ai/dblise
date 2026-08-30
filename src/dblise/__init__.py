@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from typing import Self
 from typing import cast
 
 from .helpers import typing
@@ -80,5 +79,6 @@ class Facade(ABC):
 
     @abstractmethod
     @asynccontextmanager
-    def pipeline(self, *, transaction: bool = True) -> AsyncGenerator[Self]:
+    def pipeline[EntityT: Entity](
+            self, entity: EntityT, *, transaction: bool = True) -> AsyncGenerator[EntityT]:
         ...
