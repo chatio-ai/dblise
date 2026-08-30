@@ -2,13 +2,13 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from typing import Self
 from typing import override
 
 from redis.asyncio import client
 
 from dblise.schemas import Fields
 from dblise.schemas import Schema
+from dblise.schemas import Entity
 from dblise.schemas import Record
 from dblise.schemas import Lookup
 from dblise.schemas import Scores
@@ -80,7 +80,8 @@ class RedisFacade(Facade):
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
-    async def pipeline(self) -> AsyncGenerator[Self]:
+    async def pipeline[EntityT: Entity](self, entity: EntityT) -> AsyncGenerator[EntityT]:
         async with self._redis_db.pipeline() as pipeline:
-            yield type(self)(redis_db=pipeline, n_digits=self._n_digits)
+            facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
+            yield facade.rebind(entity)
             await pipeline.execute()
