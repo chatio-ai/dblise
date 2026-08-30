@@ -19,6 +19,11 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
         super().__init__(redis_db, key_path)
         self._converts: RedisCodecs[FieldsT] = converts
 
+    @property
+    @override
+    def fields(self) -> type[FieldsT]:
+        return self._converts.data_cls
+
     async def _load(self, redis_db: Redis) -> FieldsT:
         return self._converts.deserialize(await redis_db.hgetall(self._key_path))
 

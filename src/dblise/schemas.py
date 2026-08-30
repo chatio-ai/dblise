@@ -22,6 +22,11 @@ class Entity(ABC):
     def handle(self) -> str:
         ...
 
+    @property
+    @abstractmethod
+    def fields(self) -> type[Fields] | None:
+        ...
+
     @abstractmethod
     async def exists(self) -> bool:
         ...
