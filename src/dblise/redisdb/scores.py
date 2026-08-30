@@ -12,6 +12,11 @@ from .entity import RedisEntity
 
 class RedisScores(RedisEntity, Scores):
 
+    @property
+    @override
+    def fields(self) -> None:
+        return None
+
     @override
     def __aiter__(self) -> AsyncIterator[str]:
         return self.values()

@@ -17,6 +17,11 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         super().__init__(redis_db, key_path)
         self._converts: RedisCodecs[FieldsT] = converts
 
+    @property
+    @override
+    def fields(self) -> type[FieldsT]:
+        return self._converts.data_cls
+
     @override
     async def len(self) -> int:
         return await self._redis_db.xlen(self._key_path)

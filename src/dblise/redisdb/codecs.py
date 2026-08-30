@@ -26,6 +26,10 @@ class RedisCodecs[FieldsT: Fields]:
         self._data_cls = data_cls
         self._type_ids = typing.field_type_ids(self._data_cls)
 
+    @property
+    def data_cls(self) -> type[FieldsT]:
+        return self._data_cls
+
     def missing_at(self, mapping: _RedisDict) -> set[str]:
         return self._type_ids.keys() - mapping.keys()
 
