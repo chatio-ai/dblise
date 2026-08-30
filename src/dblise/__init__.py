@@ -54,9 +54,19 @@ class Facade(ABC):
             case _:
                 raise TypeError(type_id)
 
-    def rebind[EntityT: Entity](self, entity: EntityT) -> EntityT:
+    def _rebind[EntityT: Entity](self, entity: EntityT) -> EntityT:
         type_id = typing.KeyTypeId(type(entity), entity.fields)
         return cast(EntityT, self._entity(entity.handle, type_id))
+
+    def rebind[ObjectT: Entity | Schema](self, obj: ObjectT) -> ObjectT:
+        if isinstance(obj, Entity):
+            return self._rebind(obj)
+
+        result: dict[str, Entity] = {}
+        for name, entity in typing.entities(obj):
+            result[name] = self._rebind(entity)
+
+        return type(obj)(**result)
 
     def entity[EntityT: Entity](self, handle: str, entity: type[EntityT]) -> EntityT:
         type_id = typing.KeyTypeId.parse(entity)
@@ -79,5 +89,5 @@ class Facade(ABC):
 
     @abstractmethod
     @asynccontextmanager
-    def pipeline[EntityT: Entity](self, entity: EntityT) -> AsyncGenerator[EntityT]:
+    def pipeline[ObjectT: Entity | Schema](self, obj: ObjectT) -> AsyncGenerator[ObjectT]:
         ...
