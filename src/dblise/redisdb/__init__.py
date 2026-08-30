@@ -80,10 +80,10 @@ class RedisFacade(Facade):
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
-    async def pipeline[EntityT: Entity](self, entity: EntityT) -> AsyncGenerator[EntityT]:
+    async def pipeline[ObjectT: Entity | Schema](self, obj: ObjectT) -> AsyncGenerator[ObjectT]:
         if isinstance(self._redis_db, client.Pipeline):
             raise TypeError
         async with self._redis_db.pipeline() as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-            yield facade.rebind(entity)
+            yield facade.rebind(obj)
             await pipeline.execute()
