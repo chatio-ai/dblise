@@ -41,19 +41,23 @@ class Facade(ABC):
 
     def _entity(self, handle: str, type_id: typing.KeyTypeId) -> Entity:
         match type_id:
-            case _ if type_id.entity is Record:
+            case _ if issubclass(type_id.entity, Record):
                 assert type_id.fields is not None
                 return self.record(handle, type_id.fields)
-            case _ if type_id.entity is Lookup:
+            case _ if issubclass(type_id.entity, Lookup):
                 assert type_id.fields is not None
                 return self.lookup(handle, type_id.fields)
-            case _ if type_id.entity is Scores:
+            case _ if issubclass(type_id.entity, Scores):
                 return self.scores(handle)
-            case _ if type_id.entity is Stream:
+            case _ if issubclass(type_id.entity, Stream):
                 assert type_id.fields is not None
                 return self.stream(handle, type_id.fields)
             case _:
                 raise TypeError(type_id)
+
+    def rebind[EntityT: Entity](self, entity: EntityT) -> EntityT:
+        type_id = typing.KeyTypeId(type(entity), entity.fields)
+        return cast(EntityT, self._entity(entity.handle, type_id))
 
     def entity[EntityT: Entity](self, handle: str, entity: type[EntityT]) -> EntityT:
         type_id = typing.KeyTypeId.parse(entity)
