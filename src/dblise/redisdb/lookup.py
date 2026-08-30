@@ -18,6 +18,11 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
         self._converts = converts
         self._key_glob = f'{key_path}:*'
 
+    @property
+    @override
+    def fields(self) -> type[FieldsT]:
+        return self._converts.data_cls
+
     @override
     def lookup(self, key: str) -> Record[FieldsT]:
         return RedisRecord(self._redis_db, f'{self._key_path}:{key}', self._converts)
