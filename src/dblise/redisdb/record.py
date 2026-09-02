@@ -1,16 +1,21 @@
 
+from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import replace
 
 from typing import override
 
+from redis.asyncio import client
+
 from dblise.schemas import Fields
 from dblise.schemas import Record
 
 from .common import Redis
+from .common import Pipeline
 from .codecs import RedisCodecs
 from .entity import RedisEntity
+from .result import RedisResult
 
 
 class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
@@ -24,31 +29,42 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
     def fields(self) -> type[FieldsT]:
         return self._converts.data_cls
 
-    async def _load(self, redis_db: Redis) -> FieldsT:
-        return self._converts.deserialize(await redis_db.hgetall(self._key_path))
+    def _load(self, redis_db: Redis) -> Awaitable[FieldsT]:
+        return RedisResult(redis_db.hgetall(self._key_path), self._converts.deserialize)
 
     @override
-    async def value(self) -> FieldsT:
-        return await self._load(self._redis_db)
+    def value(self) -> Awaitable[FieldsT]:
+        return self._load(self._redis_db)
 
-    async def _save(self, redis_db: Redis, instance: FieldsT) -> None:
+    def _save(self, redis_db: Pipeline, instance: FieldsT) -> Awaitable[None]:
         mapping = self._converts.serialize(instance)
         missing = self._converts.missing_at(mapping)
         if mapping:
-            await redis_db.hmset(self._key_path, mapping)
+            redis_db.hmset(self._key_path, mapping)
         if missing:
-            await redis_db.hdel(self._key_path, *missing)
+            redis_db.hdel(self._key_path, *missing)
+
+        return RedisResult.void(redis_db)
 
     @override
-    async def assign(self, value: FieldsT) -> None:
-        async with self._redis_db.pipeline() as pipeline:
-            await self._save(pipeline, value)
-            await pipeline.execute()
+    def assign(self, value: FieldsT) -> Awaitable[None]:
+        if isinstance(self._redis_db, client.Pipeline):
+            return self._save(self._redis_db, value)
+
+        async def _func() -> None:
+            async with self._redis_db.pipeline() as pipeline:
+                self._save(pipeline, value)
+                await pipeline.execute()
+
+        return RedisResult.void(_func())
 
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
     async def modify(self) -> AsyncGenerator[FieldsT]:
+        if isinstance(self._redis_db, client.Pipeline):
+            raise TypeError
+
         async with self._redis_db.pipeline() as pipeline:
             await pipeline.watch(self._key_path)
             original = await self._load(pipeline)
@@ -56,5 +72,5 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
             yield instance
             if instance != original:
                 pipeline.multi()
-                await self._save(pipeline, instance)
+                self._save(pipeline, instance)
                 await pipeline.execute()
