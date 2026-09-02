@@ -28,6 +28,10 @@ class Result[ValueT](Awaitable[ValueT]):
         self._invoke = invoke
         self._decode = decode
 
+    @staticmethod
+    def asis(value: ValueT) -> ValueT:
+        return value
+
     async def _resolve(self) -> ValueT:
         return self._decode(await self._invoke)
 
@@ -87,27 +91,28 @@ class Scores(Entity, AsyncIterable[str], ABC):
         ...
 
     @abstractmethod
-    async def index(self, key: str, *, reverse: bool = False) -> int | None:
+    def index(self, key: str, *, reverse: bool = False) -> Result[int | None]:
         ...
 
     @abstractmethod
-    async def score(self, key: str) -> float | None:
+    def score(self, key: str) -> Result[float | None]:
         ...
 
     @abstractmethod
-    async def count(self) -> int:
+    def count(self) -> Result[int]:
         ...
 
     @abstractmethod
-    async def len(self) -> int:
+    def len(self) -> Result[int]:
         ...
 
     @abstractmethod
-    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
+    def insert(
+            self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> Result[bool]:
         ...
 
     @abstractmethod
-    async def remove(self, key: str) -> bool:
+    def remove(self, key: str) -> Result[bool]:
         ...
 
 
