@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import override
 
 from dblise.schemas import Fields
+from dblise.schemas import Result
 from dblise.schemas import Record
 
 from .common import Redis
@@ -24,12 +25,12 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
     def fields(self) -> type[FieldsT]:
         return self._converts.data_cls
 
-    async def _load(self, redis_db: Redis) -> FieldsT:
-        return self._converts.deserialize(await redis_db.hgetall(self._key_path))
+    def _load(self, redis_db: Redis) -> Result[FieldsT]:
+        return Result(redis_db.hgetall(self._key_path), self._converts.deserialize)
 
     @override
-    async def value(self) -> FieldsT:
-        return await self._load(self._redis_db)
+    def value(self) -> Result[FieldsT]:
+        return self._load(self._redis_db)
 
     async def _save(self, redis_db: Redis, instance: FieldsT) -> None:
         mapping = self._converts.serialize(instance)

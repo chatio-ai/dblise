@@ -33,13 +33,13 @@ async def main() -> None:
     print(await schema.test.value())
 
     async with facade.pipeline(schema.test) as (test,):
-        await test.value()
+        test.value()
         await test.assign(Test('hello'))
 
     print(await schema.test.value())
 
     async with facade.pipeline(schema) as (schema_,):
-        await schema_.test.value()
+        schema_.test.value()
         await schema_.test.assign(Test('world'))
 
     print(await schema.test.value())

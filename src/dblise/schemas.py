@@ -4,6 +4,9 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from collections.abc import AsyncIterator
 from collections.abc import AsyncIterable
+from collections.abc import Awaitable
+from collections.abc import Generator
+from collections.abc import Callable
 
 from contextlib import asynccontextmanager
 
@@ -13,6 +16,23 @@ from dataclasses import dataclass
 @dataclass
 class Fields:
     pass
+
+
+# pylint: disable=too-few-public-methods
+class Result[ValueT](Awaitable[ValueT]):
+    def __init__[RawValueT](
+        self,
+        invoke: Awaitable[RawValueT],
+        decode: Callable[[RawValueT], ValueT],
+    ) -> None:
+        self._invoke = invoke
+        self._decode = decode
+
+    async def _resolve(self) -> ValueT:
+        return self._decode(await self._invoke)
+
+    def __await__(self) -> Generator[None, None, ValueT]:
+        return self._resolve().__await__()
 
 
 class Entity(ABC):
@@ -38,7 +58,7 @@ class Entity(ABC):
 
 class Record[FieldsT](Entity, ABC):
     @abstractmethod
-    async def value(self) -> FieldsT:
+    def value(self) -> Result[FieldsT]:
         ...
 
     @abstractmethod
