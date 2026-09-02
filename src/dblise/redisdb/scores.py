@@ -1,7 +1,7 @@
 
 import math
 
-from collections.abc import AsyncIterator
+from collections.abc import Iterator
 
 from typing import override
 
@@ -19,20 +19,13 @@ class RedisScores(RedisEntity, Scores):
         return None
 
     @override
-    def __aiter__(self) -> AsyncIterator[str]:
-        return self.values()
+    def values(self, *, reverse: bool = False) -> Result[Iterator[str]]:
+        return Result(self._redis_db.zrange(self._key_path, 0, -1, desc=reverse), iter)
 
     @override
-    # pylint: disable=invalid-overridden-method
-    async def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
-        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse):
-            yield _
-
-    @override
-    # pylint: disable=invalid-overridden-method
-    async def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
-        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True):
-            yield _
+    def scores(self, *, reverse: bool = False) -> Result[Iterator[tuple[str, float]]]:
+        return Result(
+                self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True), iter)
 
     @override
     def index(self, key: str, *, reverse: bool = False) -> Result[int | None]:

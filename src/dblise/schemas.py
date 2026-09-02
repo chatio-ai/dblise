@@ -2,10 +2,9 @@
 from abc import ABC, abstractmethod
 
 from collections.abc import AsyncGenerator
-from collections.abc import AsyncIterator
-from collections.abc import AsyncIterable
 from collections.abc import Awaitable
 from collections.abc import Generator
+from collections.abc import Iterator
 from collections.abc import Callable
 
 from contextlib import asynccontextmanager
@@ -88,13 +87,13 @@ class Lookup[FieldsT](Entity, ABC):
         ...
 
 
-class Scores(Entity, AsyncIterable[str], ABC):
+class Scores(Entity, ABC):
     @abstractmethod
-    def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
+    def values(self, *, reverse: bool = False) -> Result[Iterator[str]]:
         ...
 
     @abstractmethod
-    def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
+    def scores(self, *, reverse: bool = False) -> Result[Iterator[tuple[str, float]]]:
         ...
 
     @abstractmethod
@@ -123,7 +122,7 @@ class Scores(Entity, AsyncIterable[str], ABC):
         ...
 
 
-class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
+class Stream[FieldsT](Entity, ABC):
     @abstractmethod
     def items(
         self,
@@ -132,7 +131,7 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[tuple[str, FieldsT]]:
+    ) -> Result[Iterator[tuple[str, FieldsT]]]:
         ...
 
     @abstractmethod
@@ -143,7 +142,7 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[FieldsT]:
+    ) -> Result[Iterator[FieldsT]]:
         ...
 
     @abstractmethod
