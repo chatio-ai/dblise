@@ -32,6 +32,7 @@ disable = [
 
 [tool.pyright]
 typeCheckingMode = "strict"
+reportUnknownLambdaType = false
 reportUnknownArgumentType = false
 reportUnknownVariableType = false
 reportUnknownMemberType = false
