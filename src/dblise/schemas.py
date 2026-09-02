@@ -48,11 +48,11 @@ class Entity(ABC):
         ...
 
     @abstractmethod
-    async def exists(self) -> bool:
+    def exists(self) -> Result[bool]:
         ...
 
     @abstractmethod
-    async def delete(self) -> bool:
+    def delete(self) -> Result[bool]:
         ...
 
 

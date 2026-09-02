@@ -1,6 +1,7 @@
 
 from typing import override
 
+from dblise.schemas import Result
 from dblise.schemas import Entity
 
 from .common import Redis
@@ -18,9 +19,9 @@ class RedisEntity(Entity):
         return self._key_path
 
     @override
-    async def exists(self) -> bool:
-        return bool(await self._redis_db.exists(self._key_path))
+    def exists(self) -> Result[bool]:
+        return Result(self._redis_db.exists(self._key_path), bool)
 
     @override
-    async def delete(self) -> bool:
-        return bool(await self._redis_db.unlink(self._key_path))
+    def delete(self) -> Result[bool]:
+        return Result(self._redis_db.unlink(self._key_path), bool)
