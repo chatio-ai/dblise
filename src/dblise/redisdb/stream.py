@@ -25,7 +25,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def len(self) -> Result[int]:
-        return Result(self._redis_db.xlen(self._key_path), Result.asis)
+        return Result(self._redis_db.xlen(self._key_path), Result.ASIS)
 
     @override
     def __aiter__(self) -> AsyncIterator[FieldsT]:
@@ -68,7 +68,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
     @override
     def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
         return Result(self._redis_db.xadd(
-            self._key_path, self._converts.serialize(value), id=entry_id), Result.asis)
+            self._key_path, self._converts.serialize(value), id=entry_id), Result.ASIS)
 
     @override
     def remove(self, entry_id: str) -> Result[bool]:

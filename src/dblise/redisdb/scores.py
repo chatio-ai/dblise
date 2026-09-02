@@ -37,19 +37,19 @@ class RedisScores(RedisEntity, Scores):
     @override
     def index(self, key: str, *, reverse: bool = False) -> Result[int | None]:
         zrank = self._redis_db.zrevrank if reverse else self._redis_db.zrank
-        return Result(zrank(self._key_path, key), Result.asis)
+        return Result(zrank(self._key_path, key), Result.ASIS)
 
     @override
     def score(self, key: str) -> Result[float | None]:
-        return Result(self._redis_db.zscore(self._key_path, key), Result.asis)
+        return Result(self._redis_db.zscore(self._key_path, key), Result.ASIS)
 
     @override
     def count(self) -> Result[int]:
-        return Result(self._redis_db.zcount(self._key_path, -math.inf, math.inf), Result.asis)
+        return Result(self._redis_db.zcount(self._key_path, -math.inf, math.inf), Result.ASIS)
 
     @override
     def len(self) -> Result[int]:
-        return Result(self._redis_db.zcard(self._key_path), Result.asis)
+        return Result(self._redis_db.zcard(self._key_path), Result.ASIS)
 
     @override
     def insert(

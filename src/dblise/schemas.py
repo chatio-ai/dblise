@@ -18,8 +18,19 @@ class Fields:
     pass
 
 
+def _asis[ValueT](value: ValueT) -> ValueT:
+    return value
+
+
+def _void(_value: object) -> None:
+    return None
+
+
 # pylint: disable=too-few-public-methods
 class Result[ValueT](Awaitable[ValueT]):
+    ASIS = staticmethod(_asis)
+    VOID = staticmethod(_void)
+
     def __init__[RawValueT](
         self,
         invoke: Awaitable[RawValueT],
@@ -27,10 +38,6 @@ class Result[ValueT](Awaitable[ValueT]):
     ) -> None:
         self._invoke = invoke
         self._decode = decode
-
-    @staticmethod
-    def asis(value: ValueT) -> ValueT:
-        return value
 
     async def _resolve(self) -> ValueT:
         return self._decode(await self._invoke)
