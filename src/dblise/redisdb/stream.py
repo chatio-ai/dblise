@@ -11,6 +11,7 @@ from dblise.schemas import Stream
 from .common import Redis
 from .codecs import RedisCodecs
 from .entity import RedisEntity
+from .result import RedisResult
 
 
 class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
@@ -25,10 +26,10 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         return self._converts.data_cls
 
     @override
-    async def len(self) -> int:
-        return await self._redis_db.xlen(self._key_path)
+    def len(self) -> Awaitable[int]:
+        return RedisResult.same(self._redis_db.xlen(self._key_path))
 
-    async def _range[ValueT](
+    def _range[ValueT](
         self,
         min_id: str | None = None,
         max_id: str | None = None,
@@ -36,7 +37,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         *,
         reverse: bool = False,
         convert: Callable[[str, FieldsT], ValueT],
-    ) -> Sequence[ValueT]:
+    ) -> Awaitable[Sequence[ValueT]]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -45,8 +46,9 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
             min_id, max_id = max_id, min_id
 
         xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
-        result = await xrange(self._key_path, min_id, max_id, count=count)
-        return [convert(k, self._converts.deserialize(v)) for k, v in result]
+        return RedisResult(
+            xrange(self._key_path, min_id, max_id, count=count),
+            lambda result: [convert(k, self._converts.deserialize(v)) for k, v in result])
 
     @override
     def values(
@@ -71,12 +73,10 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         return self._range(min_id, max_id, count, reverse=reverse, convert=lambda k, v: (k, v))
 
     @override
-    async def append(self, value: FieldsT, entry_id: str = '*') -> str:
-        _ = await self._redis_db.xadd(
-                self._key_path, self._converts.serialize(value), id=entry_id)
-        assert isinstance(_, str)
-        return _
+    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
+        return RedisResult.same(self._redis_db.xadd(
+            self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
-    async def remove(self, entry_id: str) -> bool:
-        return bool(await self._redis_db.xdel(self._key_path, entry_id))
+    def remove(self, entry_id: str) -> Awaitable[bool]:
+        return RedisResult(self._redis_db.xdel(self._key_path, entry_id), bool)

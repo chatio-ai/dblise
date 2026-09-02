@@ -1,4 +1,5 @@
 
+from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -19,6 +20,7 @@ from dblise import Facade
 from dblise.helpers.typing import entities
 
 from .common import Redis
+from .result import RedisResult
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
 from .record import RedisRecord
@@ -65,18 +67,18 @@ class RedisFacade(Facade):
         return f'{parent}:{child}'
 
     @override
-    async def exists(self, schema: Schema) -> bool:
+    def exists(self, schema: Schema) -> Awaitable[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return False
-        return bool(await self._redis_db.exists(*keys))
+            return RedisResult.pure(self._redis_db, value=False)
+        return RedisResult(self._redis_db.exists(*keys), bool)
 
     @override
-    async def delete(self, schema: Schema) -> bool:
+    def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return False
-        return bool(await self._redis_db.unlink(*keys))
+            return RedisResult.pure(self._redis_db, value=False)
+        return RedisResult(self._redis_db.unlink(*keys), bool)
 
     @override
     @asynccontextmanager
