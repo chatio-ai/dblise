@@ -1,6 +1,6 @@
 
-from collections.abc import Awaitable
 from collections.abc import Iterator
+from collections.abc import Callable
 
 from typing import override
 
@@ -29,14 +29,15 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
     def len(self) -> Result[int]:
         return Result(self._redis_db.xlen(self._key_path), Result.ASIS)
 
-    def _range(
+    def _range[ValueT](
         self,
         min_id: str | None = None,
         max_id: str | None = None,
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Awaitable[Iterator[tuple[str, RedisDict]]]:
+        convert: Callable[[str, FieldsT], ValueT],
+    ) -> Result[Iterator[ValueT]]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -44,8 +45,12 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         if reverse:
             min_id, max_id = max_id, min_id
 
+        def _iter(it: Iterator[tuple[str, RedisDict]]) -> Iterator[ValueT]:
+            for key, value in it:
+                yield convert(key, self._converts.deserialize(value))
+
         xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
-        return xrange(self._key_path, min_id, max_id, count=count)
+        return Result(xrange(self._key_path, min_id, max_id, count=count), _iter)
 
     @override
     def values(
@@ -56,11 +61,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         *,
         reverse: bool = False,
     ) -> Result[Iterator[FieldsT]]:
-        def _iter(it: Iterator[tuple[str, RedisDict]]) -> Iterator[FieldsT]:
-            for _, value in it:
-                yield self._converts.deserialize(value)
-
-        return Result(self._range(min_id, max_id, count, reverse=reverse), _iter)
+        return self._range(min_id, max_id, count, reverse=reverse, convert=lambda _, v: v)
 
     @override
     def items(
@@ -71,11 +72,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         *,
         reverse: bool = False,
     ) -> Result[Iterator[tuple[str, FieldsT]]]:
-        def _iter(it: Iterator[tuple[str, RedisDict]]) -> Iterator[tuple[str, FieldsT]]:
-            for key, value in it:
-                yield key, self._converts.deserialize(value)
-
-        return Result(self._range(min_id, max_id, count, reverse=reverse), _iter)
+        return self._range(min_id, max_id, count, reverse=reverse, convert=lambda k, v: (k, v))
 
     @override
     def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
