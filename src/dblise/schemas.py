@@ -72,7 +72,7 @@ class Record[FieldsT](Entity, ABC):
         ...
 
     @abstractmethod
-    async def assign(self, value: FieldsT) -> None:
+    def assign(self, value: FieldsT) -> Result[None]:
         ...
 
     @abstractmethod

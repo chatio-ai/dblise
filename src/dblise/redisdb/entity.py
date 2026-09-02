@@ -1,6 +1,8 @@
 
 from typing import override
 
+from redis.asyncio import client
+
 from dblise.schemas import Result
 from dblise.schemas import Entity
 
@@ -12,6 +14,7 @@ class RedisEntity(Entity):
     def __init__(self, redis_db: Redis, key_path: str) -> None:
         self._redis_db = redis_db
         self._key_path = key_path
+        self._is_piped = isinstance(redis_db, client.Pipeline)
 
     @property
     @override
