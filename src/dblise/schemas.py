@@ -140,15 +140,15 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         ...
 
     @abstractmethod
-    async def len(self) -> int:
+    def len(self) -> Result[int]:
         ...
 
     @abstractmethod
-    async def append(self, value: FieldsT, entry_id: str = '*') -> str:
+    def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
         ...
 
     @abstractmethod
-    async def remove(self, entry_id: str) -> bool:
+    def remove(self, entry_id: str) -> Result[bool]:
         ...
 
 
