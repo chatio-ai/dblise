@@ -8,6 +8,7 @@ from typing import cast
 from redis.asyncio import client
 
 from dblise.schemas import Fields
+from dblise.schemas import Result
 from dblise.schemas import Schema
 from dblise.schemas import Entity
 from dblise.schemas import Record
@@ -65,18 +66,22 @@ class RedisFacade(Facade):
         return f'{parent}:{child}'
 
     @override
-    async def exists(self, schema: Schema) -> bool:
-        keys = [entity.handle for _, entity in entities(schema)]
-        if not keys:
-            return False
-        return bool(await self._redis_db.exists(*keys))
+    def exists(self, schema: Schema) -> Result[bool]:
+        async def _func() -> int:
+            keys = [entity.handle for _, entity in entities(schema)]
+            if not keys:
+                return 0
+            return await self._redis_db.exists(*keys)
+        return Result(_func(), bool)
 
     @override
-    async def delete(self, schema: Schema) -> bool:
-        keys = [entity.handle for _, entity in entities(schema)]
-        if not keys:
-            return False
-        return bool(await self._redis_db.unlink(*keys))
+    def delete(self, schema: Schema) -> Result[bool]:
+        async def _func() -> int:
+            keys = [entity.handle for _, entity in entities(schema)]
+            if not keys:
+                return 0
+            return await self._redis_db.unlink(*keys)
+        return Result(_func(), bool)
 
     @override
     @asynccontextmanager

@@ -8,6 +8,7 @@ from typing import cast
 from .helpers import typing
 
 from .schemas import Fields
+from .schemas import Result
 from .schemas import Schema
 from .schemas import Entity
 from .schemas import Record
@@ -80,11 +81,11 @@ class Facade(ABC):
         return schema(**result)
 
     @abstractmethod
-    async def exists(self, schema: Schema) -> bool:
+    def exists(self, schema: Schema) -> Result[bool]:
         ...
 
     @abstractmethod
-    async def delete(self, schema: Schema) -> bool:
+    def delete(self, schema: Schema) -> Result[bool]:
         ...
 
     @abstractmethod
