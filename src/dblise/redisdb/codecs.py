@@ -46,6 +46,9 @@ class RedisCodecs[SchemaT: Schema]:
 
         raise TypeError
 
+    def missing_at(self, mapping: _RedisDict) -> list[str]:
+        return [field.name for field in fields(self._obj_type) if field.name not in mapping]
+
     def serialize(self, instance: SchemaT) -> _RedisDict:
         mapping = asdict(instance)
         result: _RedisDict = {}

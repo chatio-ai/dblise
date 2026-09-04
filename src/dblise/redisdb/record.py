@@ -20,18 +20,26 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
         super().__init__(redis_db, key_path)
         self._converts: RedisCodecs[SchemaT] = converts
 
-    def _load(self, redis_db: Redis | None = None) -> SchemaT:
-        if redis_db is None:
-            redis_db = self._redis_db
+    def _load(self, redis_db: Redis) -> SchemaT:
         return self._converts.deserialize(redis_db.hgetall(self._key_path))
 
     @override
     def fields(self) -> SchemaT:
-        return self._load()
+        return self._load(self._redis_db)
+
+    def _save(self, redis_db: Redis, instance: SchemaT) -> None:
+        mapping = self._converts.serialize(instance)
+        missing = self._converts.missing_at(mapping)
+        if mapping:
+            redis_db.hmset(self._key_path, mapping)
+        if missing:
+            redis_db.hdel(self._key_path, *missing)
 
     @override
     def assign(self, instance: SchemaT) -> None:
-        self._redis_db.hmset(self._key_path, self._converts.serialize(instance))
+        with self._redis_db.pipeline() as pipeline:
+            self._save(pipeline, instance)
+            pipeline.execute()
 
     @override
     @contextmanager
@@ -43,6 +51,5 @@ class RedisRecord[SchemaT: Schema](RedisEntity, Record[SchemaT]):
             yield instance
             if instance != original:
                 pipeline.multi()
-                pipeline.unlink(self._key_path)
-                pipeline.hmset(self._key_path, self._converts.serialize(instance))
+                self._save(pipeline, instance)
                 pipeline.execute()
