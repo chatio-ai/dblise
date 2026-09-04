@@ -45,16 +45,22 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
 
     @override
     def assign(self, value: FieldsT) -> Result[None]:
-        return self._save(self._redis_db, value)
+        if self._is_piped:
+            return self._save(self._redis_db, value)
 
-        # async with self._redis_db.pipeline() as pipeline:
-        #     await self._save(pipeline, value)
-        #     await pipeline.execute()
+        async def _func() -> None:
+            async with self._redis_db.pipeline() as pipeline:
+                await self._save(pipeline, value)
+                await pipeline.execute()
+
+        return Result(_func(), Result.ASIS)
 
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
     async def modify(self) -> AsyncGenerator[FieldsT]:
+        if self._is_piped:
+            raise RuntimeError
         async with self._redis_db.pipeline() as pipeline:
             await pipeline.watch(self._key_path)
             original = await self._load(pipeline)

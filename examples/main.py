@@ -30,26 +30,28 @@ async def main() -> None:
     schema = facade.schema('test', Tests)
 
     await schema.test.delete()
-    print(await schema.test.value())
+    assert await schema.test.value() == Test('')
+    await schema.test.assign(Test('test'))
+    assert await schema.test.value() == Test('test')
 
     async with facade.pipeline(schema.test) as (test,):
         test.value()
-        await test.assign(Test('hello'))
+        test.assign(Test('hello'))
 
-    print(await schema.test.value())
+    assert await schema.test.value() == Test('hello')
 
     async with facade.pipeline(schema) as (schema_,):
         schema_.test.value()
-        await schema_.test.assign(Test('world'))
+        schema_.test.assign(Test('world'))
 
-    print(await schema.test.value())
+    assert await schema.test.value() == Test('world')
 
     async with facade.pipeline(schema.test1, schema.test2) as (test1, test2):
-        await test1.assign(Test('hello'))
-        await test2.assign(Test('world'))
+        test1.assign(Test('hello'))
+        test2.assign(Test('world'))
 
-    print(await schema.test1.value())
-    print(await schema.test2.value())
+    assert await schema.test1.value() == Test('hello')
+    assert await schema.test2.value() == Test('world')
 
 
 if __name__ == '__main__':
