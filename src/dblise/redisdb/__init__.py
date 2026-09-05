@@ -69,14 +69,14 @@ class RedisFacade(Facade):
     def exists(self, schema: Schema) -> Result[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return Result(Result.value(value=False), Result.ASIS)
+            return Result.value(value=False)
         return Result(self._redis_db.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Result[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return Result(Result.value(value=False), Result.ASIS)
+            return Result.value(value=False)
         return Result(self._redis_db.unlink(*keys), bool)
 
     @override

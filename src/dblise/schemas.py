@@ -11,6 +11,8 @@ from contextlib import asynccontextmanager
 
 from dataclasses import dataclass
 
+from typing import Self
+
 
 @dataclass
 class Fields:
@@ -45,8 +47,12 @@ class Result[ValueT](Awaitable[ValueT]):
         return self._resolve().__await__()
 
     @staticmethod
-    async def value[RawValueT](value: RawValueT) -> RawValueT:
+    async def _value[RawValueT](value: RawValueT) -> RawValueT:
         return value
+
+    @classmethod
+    def value(cls, value: ValueT) -> Self:
+        return cls(cls._value(value), cls.ASIS)
 
 
 class Entity(ABC):
