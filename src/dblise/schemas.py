@@ -44,6 +44,10 @@ class Result[ValueT](Awaitable[ValueT]):
     def __await__(self) -> Generator[None, None, ValueT]:
         return self._resolve().__await__()
 
+    @staticmethod
+    async def value[RawValueT](value: RawValueT) -> RawValueT:
+        return value
+
 
 class Entity(ABC):
 

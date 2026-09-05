@@ -43,7 +43,7 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
         if missing:
             redis_db.hdel(self._key_path, *missing)
 
-        return Result(redis_db.ping(), Result.ASIS)
+        return Result(Result.value(None), Result.ASIS)
 
     @override
     def assign(self, value: FieldsT) -> Result[None]:
