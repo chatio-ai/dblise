@@ -5,11 +5,14 @@ from dataclasses import replace
 
 from typing import override
 
+from redis.asyncio import client
+
 from dblise.schemas import Fields
 from dblise.schemas import Result
 from dblise.schemas import Record
 
 from .common import Redis
+from .common import Pipeline
 from .codecs import RedisCodecs
 from .entity import RedisEntity
 
@@ -32,20 +35,19 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
     def value(self) -> Result[FieldsT]:
         return self._load(self._redis_db)
 
-    def _save(self, redis_db: Redis, instance: FieldsT) -> Result[None]:
-        async def _func() -> None:
-            mapping = self._converts.serialize(instance)
-            missing = self._converts.missing_at(mapping)
-            if mapping:
-                await redis_db.hmset(self._key_path, mapping)
-            if missing:
-                await redis_db.hdel(self._key_path, *missing)
+    def _save(self, redis_db: Pipeline, instance: FieldsT) -> Result[None]:
+        mapping = self._converts.serialize(instance)
+        missing = self._converts.missing_at(mapping)
+        if mapping:
+            redis_db.hmset(self._key_path, mapping)
+        if missing:
+            redis_db.hdel(self._key_path, *missing)
 
-        return Result(_func(), Result.ASIS)
+        return Result(redis_db.ping(), Result.ASIS)
 
     @override
     def assign(self, value: FieldsT) -> Result[None]:
-        if self._is_piped:
+        if isinstance(self._redis_db, client.Pipeline):
             return self._save(self._redis_db, value)
 
         async def _func() -> None:

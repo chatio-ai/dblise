@@ -67,21 +67,17 @@ class RedisFacade(Facade):
 
     @override
     def exists(self, schema: Schema) -> Result[bool]:
-        async def _func() -> int:
-            keys = [entity.handle for _, entity in entities(schema)]
-            if not keys:
-                return 0
-            return await self._redis_db.exists(*keys)
-        return Result(_func(), bool)
+        keys = [entity.handle for _, entity in entities(schema)]
+        if not keys:
+            return Result(self._redis_db.ping(), bool)
+        return Result(self._redis_db.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Result[bool]:
-        async def _func() -> int:
-            keys = [entity.handle for _, entity in entities(schema)]
-            if not keys:
-                return 0
-            return await self._redis_db.unlink(*keys)
-        return Result(_func(), bool)
+        keys = [entity.handle for _, entity in entities(schema)]
+        if not keys:
+            return Result(self._redis_db.ping(), bool)
+        return Result(self._redis_db.unlink(*keys), bool)
 
     @override
     @asynccontextmanager
