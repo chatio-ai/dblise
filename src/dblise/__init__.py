@@ -1,5 +1,6 @@
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,7 +9,6 @@ from typing import cast
 from .helpers import typing
 
 from .schemas import Fields
-from .schemas import Result
 from .schemas import Schema
 from .schemas import Entity
 from .schemas import Record
@@ -81,11 +81,11 @@ class Facade(ABC):
         return schema(**result)
 
     @abstractmethod
-    def exists(self, schema: Schema) -> Result[bool]:
+    def exists(self, schema: Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    def delete(self, schema: Schema) -> Result[bool]:
+    def delete(self, schema: Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod

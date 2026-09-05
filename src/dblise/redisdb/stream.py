@@ -1,11 +1,10 @@
 
+from collections.abc import Awaitable
 from collections.abc import Iterator
 from collections.abc import Callable
-
 from typing import override
 
 from dblise.schemas import Fields
-from dblise.schemas import Result
 from dblise.schemas import Stream
 
 from .common import Redis
@@ -26,8 +25,8 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         return self._converts.data_cls
 
     @override
-    def len(self) -> Result[int]:
-        return Result(self._redis_db.xlen(self._key_path), Result.ASIS)
+    def len(self) -> Awaitable[int]:
+        return self._results.asis(self._redis_db.xlen(self._key_path))
 
     def _range[ValueT](
         self,
@@ -37,7 +36,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         *,
         reverse: bool = False,
         convert: Callable[[str, FieldsT], ValueT],
-    ) -> Result[Iterator[ValueT]]:
+    ) -> Awaitable[Iterator[ValueT]]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -50,7 +49,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
                 yield convert(key, self._converts.deserialize(value))
 
         xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
-        return Result(xrange(self._key_path, min_id, max_id, count=count), _iter)
+        return self._results.conv(xrange(self._key_path, min_id, max_id, count=count), _iter)
 
     @override
     def values(
@@ -60,7 +59,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Result[Iterator[FieldsT]]:
+    ) -> Awaitable[Iterator[FieldsT]]:
         return self._range(min_id, max_id, count, reverse=reverse, convert=lambda _, v: v)
 
     @override
@@ -71,14 +70,14 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Result[Iterator[tuple[str, FieldsT]]]:
+    ) -> Awaitable[Iterator[tuple[str, FieldsT]]]:
         return self._range(min_id, max_id, count, reverse=reverse, convert=lambda k, v: (k, v))
 
     @override
-    def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
-        return Result(self._redis_db.xadd(
-            self._key_path, self._converts.serialize(value), id=entry_id), Result.ASIS)
+    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
+        return self._results.asis(self._redis_db.xadd(
+            self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
-    def remove(self, entry_id: str) -> Result[bool]:
-        return Result(self._redis_db.xdel(self._key_path, entry_id), bool)
+    def remove(self, entry_id: str) -> Awaitable[bool]:
+        return self._results.conv(self._redis_db.xdel(self._key_path, entry_id), bool)

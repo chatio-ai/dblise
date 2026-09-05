@@ -3,56 +3,16 @@ from abc import ABC, abstractmethod
 
 from collections.abc import AsyncGenerator
 from collections.abc import Awaitable
-from collections.abc import Generator
 from collections.abc import Iterator
-from collections.abc import Callable
 
 from contextlib import asynccontextmanager
 
 from dataclasses import dataclass
 
-from typing import Self
-
 
 @dataclass
 class Fields:
     pass
-
-
-def _asis[ValueT](value: ValueT) -> ValueT:
-    return value
-
-
-def _void(_value: object) -> None:
-    return None
-
-
-# pylint: disable=too-few-public-methods
-class Result[ValueT](Awaitable[ValueT]):
-    ASIS = staticmethod(_asis)
-    VOID = staticmethod(_void)
-
-    def __init__[RawValueT](
-        self,
-        invoke: Awaitable[RawValueT],
-        decode: Callable[[RawValueT], ValueT],
-    ) -> None:
-        self._invoke = invoke
-        self._decode = decode
-
-    async def _resolve(self) -> ValueT:
-        return self._decode(await self._invoke)
-
-    def __await__(self) -> Generator[None, None, ValueT]:
-        return self._resolve().__await__()
-
-    @staticmethod
-    async def _value[RawValueT](value: RawValueT) -> RawValueT:
-        return value
-
-    @classmethod
-    def value(cls, value: ValueT) -> Self:
-        return cls(cls._value(value), cls.ASIS)
 
 
 class Entity(ABC):
@@ -68,21 +28,21 @@ class Entity(ABC):
         ...
 
     @abstractmethod
-    def exists(self) -> Result[bool]:
+    def exists(self) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    def delete(self) -> Result[bool]:
+    def delete(self) -> Awaitable[bool]:
         ...
 
 
 class Record[FieldsT](Entity, ABC):
     @abstractmethod
-    def value(self) -> Result[FieldsT]:
+    def value(self) -> Awaitable[FieldsT]:
         ...
 
     @abstractmethod
-    def assign(self, value: FieldsT) -> Result[None]:
+    def assign(self, value: FieldsT) -> Awaitable[None]:
         ...
 
     @abstractmethod
@@ -99,36 +59,36 @@ class Lookup[FieldsT](Entity, ABC):
 
 class Scores(Entity, ABC):
     @abstractmethod
-    def values(self, *, reverse: bool = False) -> Result[Iterator[str]]:
+    def values(self, *, reverse: bool = False) -> Awaitable[Iterator[str]]:
         ...
 
     @abstractmethod
-    def scores(self, *, reverse: bool = False) -> Result[Iterator[tuple[str, float]]]:
+    def scores(self, *, reverse: bool = False) -> Awaitable[Iterator[tuple[str, float]]]:
         ...
 
     @abstractmethod
-    def index(self, key: str, *, reverse: bool = False) -> Result[int | None]:
+    def index(self, key: str, *, reverse: bool = False) -> Awaitable[int | None]:
         ...
 
     @abstractmethod
-    def score(self, key: str) -> Result[float | None]:
+    def score(self, key: str) -> Awaitable[float | None]:
         ...
 
     @abstractmethod
-    def count(self) -> Result[int]:
+    def count(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    def len(self) -> Result[int]:
+    def len(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    def insert(
-            self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> Result[bool]:
+    def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False,
+               ) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    def remove(self, key: str) -> Result[bool]:
+    def remove(self, key: str) -> Awaitable[bool]:
         ...
 
 
@@ -141,7 +101,7 @@ class Stream[FieldsT](Entity, ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Result[Iterator[tuple[str, FieldsT]]]:
+    ) -> Awaitable[Iterator[tuple[str, FieldsT]]]:
         ...
 
     @abstractmethod
@@ -152,19 +112,19 @@ class Stream[FieldsT](Entity, ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Result[Iterator[FieldsT]]:
+    ) -> Awaitable[Iterator[FieldsT]]:
         ...
 
     @abstractmethod
-    def len(self) -> Result[int]:
+    def len(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
+    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
         ...
 
     @abstractmethod
-    def remove(self, entry_id: str) -> Result[bool]:
+    def remove(self, entry_id: str) -> Awaitable[bool]:
         ...
 
 

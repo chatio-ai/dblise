@@ -1,8 +1,8 @@
 
+from collections.abc import Awaitable
 from typing import override
 
 from dblise.schemas import Fields
-from dblise.schemas import Result
 from dblise.schemas import Record
 from dblise.schemas import Lookup
 
@@ -34,7 +34,7 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
         return False
 
     @override
-    def exists(self) -> Result[bool]:
+    def exists(self) -> Awaitable[bool]:
         raise NotImplementedError
 
     async def _delete(self) -> bool:
@@ -44,5 +44,5 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
         return bool(keys)
 
     @override
-    def delete(self) -> Result[bool]:
+    def delete(self) -> Awaitable[bool]:
         raise NotImplementedError

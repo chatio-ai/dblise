@@ -1,4 +1,5 @@
 
+from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,7 +9,6 @@ from typing import cast
 from redis.asyncio import client
 
 from dblise.schemas import Fields
-from dblise.schemas import Result
 from dblise.schemas import Schema
 from dblise.schemas import Entity
 from dblise.schemas import Record
@@ -20,6 +20,7 @@ from dblise import Facade
 from dblise.helpers.typing import entities
 
 from .common import Redis
+from .result import Results
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
 from .record import RedisRecord
@@ -41,6 +42,7 @@ class RedisFacade(Facade):
 
         self._redis_db = redis_db
         self._n_digits = n_digits
+        self._results = Results(redis_db)
 
     def _codec[FieldsT: Fields](self, fields: type[FieldsT]) -> RedisCodecs[FieldsT]:
         return RedisCodecs(fields, self._n_digits)
@@ -66,18 +68,18 @@ class RedisFacade(Facade):
         return f'{parent}:{child}'
 
     @override
-    def exists(self, schema: Schema) -> Result[bool]:
+    def exists(self, schema: Schema) -> Awaitable[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return Result.value(value=False)
-        return Result(self._redis_db.exists(*keys), bool)
+            return self._results.just(value=False)
+        return self._results.conv(self._redis_db.exists(*keys), bool)
 
     @override
-    def delete(self, schema: Schema) -> Result[bool]:
+    def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = [entity.handle for _, entity in entities(schema)]
         if not keys:
-            return Result.value(value=False)
-        return Result(self._redis_db.unlink(*keys), bool)
+            return self._results.just(value=False)
+        return self._results.conv(self._redis_db.unlink(*keys), bool)
 
     @override
     @asynccontextmanager
