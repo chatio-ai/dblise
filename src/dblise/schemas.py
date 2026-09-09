@@ -135,7 +135,7 @@ class Schema:
     def __iter__(self) -> Iterator[Entity]:
         yield from self(lambda _, entity: entity)
 
-    def __call__[T](self, func: Callable[[str, Entity], T] = lambda k, v: (k, v)) -> Iterator[T]:
+    def __call__[T](self, func: Callable[[str, Entity], T]) -> Iterator[T]:
         for name, entity in vars(self).items():
             if not isinstance(entity, Entity):
                 raise TypeError(entity)
