@@ -1,5 +1,4 @@
 
-from collections.abc import Iterator
 from collections.abc import Callable
 
 from dataclasses import is_dataclass
@@ -18,7 +17,6 @@ from types import UnionType
 from types import NoneType
 
 from dblise.schemas import Fields
-from dblise.schemas import Schema
 from dblise.schemas import Entity
 
 
@@ -84,14 +82,3 @@ class KeyTypeId(TypeId):
 
 def key_type_ids(cls: type) -> dict[str, KeyTypeId]:
     return _type_ids(cls, KeyTypeId.parse)
-
-
-def entities(schema: Schema) -> Iterator[tuple[str, Entity]]:
-    if not is_dataclass(schema):
-        raise TypeError(schema)
-
-    for name, entity in vars(schema).items():
-        if not isinstance(entity, Entity):
-            raise TypeError(entity)
-
-        yield name, entity

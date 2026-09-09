@@ -30,6 +30,9 @@ async def main() -> None:
     record = facade.entity('test', Record[Test])    # type: ignore[type-abstract]
     await record.delete()
 
+    for op in schema(lambda _, entity: entity.delete()):
+        await op
+
     await schema.test.delete()
     assert await schema.test.value() == Test('')
     await schema.test.assign(Test('test'))
