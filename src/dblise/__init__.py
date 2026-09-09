@@ -1,5 +1,6 @@
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -80,11 +81,11 @@ class Facade(ABC):
         return schema(**result)
 
     @abstractmethod
-    async def exists(self, schema: Schema) -> bool:
+    def exists(self, schema: Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    async def delete(self, schema: Schema) -> bool:
+    def delete(self, schema: Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod
