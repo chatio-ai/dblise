@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from collections.abc import AsyncIterator
 from collections.abc import AsyncIterable
+from collections.abc import Awaitable
 
 from contextlib import asynccontextmanager
 
@@ -28,21 +29,21 @@ class Entity(ABC):
         ...
 
     @abstractmethod
-    async def exists(self) -> bool:
+    def exists(self) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    async def delete(self) -> bool:
+    def delete(self) -> Awaitable[bool]:
         ...
 
 
 class Record[FieldsT](Entity, ABC):
     @abstractmethod
-    async def value(self) -> FieldsT:
+    def value(self) -> Awaitable[FieldsT]:
         ...
 
     @abstractmethod
-    async def assign(self, value: FieldsT) -> None:
+    def assign(self, value: FieldsT) -> Awaitable[None]:
         ...
 
     @abstractmethod
@@ -67,27 +68,28 @@ class Scores(Entity, AsyncIterable[str], ABC):
         ...
 
     @abstractmethod
-    async def index(self, key: str, *, reverse: bool = False) -> int | None:
+    def index(self, key: str, *, reverse: bool = False) -> Awaitable[int | None]:
         ...
 
     @abstractmethod
-    async def score(self, key: str) -> float | None:
+    def score(self, key: str) -> Awaitable[float | None]:
         ...
 
     @abstractmethod
-    async def count(self) -> int:
+    def count(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    async def len(self) -> int:
+    def len(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
+    def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False,
+               ) -> Awaitable[None]:
         ...
 
     @abstractmethod
-    async def remove(self, key: str) -> bool:
+    def remove(self, key: str) -> Awaitable[bool]:
         ...
 
 
@@ -115,15 +117,15 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         ...
 
     @abstractmethod
-    async def len(self) -> int:
+    def len(self) -> Awaitable[int]:
         ...
 
     @abstractmethod
-    async def append(self, value: FieldsT, entry_id: str = '*') -> str:
+    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
         ...
 
     @abstractmethod
-    async def remove(self, entry_id: str) -> bool:
+    def remove(self, entry_id: str) -> Awaitable[bool]:
         ...
 
 
