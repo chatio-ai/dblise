@@ -27,6 +27,9 @@ async def main() -> None:
     facade = RedisFacade()
     schema = facade.schema('test', Tests)
 
+    record = facade.entity('test', Record[Test])    # type: ignore[type-abstract]
+    await record.delete()
+
     await schema.test.delete()
     assert await schema.test.value() == Test('')
     await schema.test.assign(Test('test'))
