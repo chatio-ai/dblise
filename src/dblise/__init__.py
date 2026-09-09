@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import cast
 
 from .helpers import typing
+from .helpers import items_of
 
 from .schemas import Fields
 from .schemas import Schema
@@ -64,7 +65,7 @@ class Facade(ABC):
             return self._rebind(obj)
 
         result: dict[str, Entity] = {}
-        for name, entity in typing.entities(obj):
+        for name, entity in items_of(obj):
             result[name] = self._rebind(entity)
 
         return type(obj)(**result)
@@ -81,11 +82,11 @@ class Facade(ABC):
         return schema(**result)
 
     @abstractmethod
-    def exists(self, schema: Schema) -> Awaitable[bool]:
+    def exists(self, *objs: Entity | Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod
-    def delete(self, schema: Schema) -> Awaitable[bool]:
+    def delete(self, *objs: Entity | Schema) -> Awaitable[bool]:
         ...
 
     @abstractmethod

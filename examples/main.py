@@ -10,6 +10,8 @@ from dblise.schemas import Fields
 from dblise.schemas import Record
 from dblise.schemas import Schema
 
+from dblise.helpers import entities
+
 from dblise import Facade
 from dblise.redisdb import RedisFacade
 
@@ -33,6 +35,9 @@ def _facade() -> Facade:
 async def main() -> None:
     facade = _facade()
     schema = facade.schema('test', Tests)
+
+    for entity in entities(schema):
+        await entity.delete()
 
     await schema.test.delete()
     assert await schema.test.value() == Test('')

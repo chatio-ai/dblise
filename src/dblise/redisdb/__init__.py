@@ -17,7 +17,7 @@ from dblise.schemas import Scores
 from dblise.schemas import Stream
 from dblise import Facade
 
-from dblise.helpers.typing import entities
+from dblise.helpers import entities
 
 from .common import Redis
 from .result import RedisResult
@@ -62,15 +62,15 @@ class RedisFacade(Facade):
         return f'{parent}:{child}'
 
     @override
-    def exists(self, schema: Schema) -> Awaitable[bool]:
-        keys = [entity.handle for _, entity in entities(schema)]
+    def exists(self, *objs: Entity | Schema) -> Awaitable[bool]:
+        keys = [_.handle for _ in entities(*objs)]
         if not keys:
             return RedisResult.pure(self._redis_db, value=False)
         return RedisResult(self._redis_db.exists(*keys), bool)
 
     @override
-    def delete(self, schema: Schema) -> Awaitable[bool]:
-        keys = [entity.handle for _, entity in entities(schema)]
+    def delete(self, *objs: Entity | Schema) -> Awaitable[bool]:
+        keys = [_.handle for _ in entities(*objs)]
         if not keys:
             return RedisResult.pure(self._redis_db, value=False)
         return RedisResult(self._redis_db.unlink(*keys), bool)
