@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 
 from collections.abc import AsyncGenerator
 from collections.abc import Awaitable
+from collections.abc import Iterator
 from collections.abc import Sequence
+from collections.abc import Callable
 
 from contextlib import asynccontextmanager
 
@@ -130,4 +132,12 @@ class Stream[FieldsT](Entity, ABC):
 
 @dataclass(frozen=True)
 class Schema:
-    pass
+    def __iter__(self) -> Iterator[Entity]:
+        yield from self(lambda _, entity: entity)
+
+    def __call__[T](self, func: Callable[[str, Entity], T] = lambda k, v: (k, v)) -> Iterator[T]:
+        for name, entity in vars(self).items():
+            if not isinstance(entity, Entity):
+                raise TypeError(entity)
+
+            yield func(name, entity)

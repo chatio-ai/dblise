@@ -27,6 +27,9 @@ async def main() -> None:
     facade = RedisFacade()
     schema = facade.schema('test', Tests)
 
+    for op in schema(lambda _, entity: entity.delete()):
+        await op
+
     await schema.test.delete()
     assert await schema.test.value() == Test('')
     await schema.test.assign(Test('test'))

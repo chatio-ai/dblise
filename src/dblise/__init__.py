@@ -64,7 +64,7 @@ class Facade(ABC):
             return self._rebind(obj)
 
         result: dict[str, Entity] = {}
-        for name, entity in typing.entities(obj):
+        for name, entity in obj():
             result[name] = self._rebind(entity)
 
         return type(obj)(**result)
