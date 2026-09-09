@@ -1,7 +1,8 @@
 
 import math
 
-from collections.abc import AsyncIterator
+from collections.abc import Awaitable
+from collections.abc import Sequence
 
 from typing import override
 
@@ -18,20 +19,12 @@ class RedisScores(RedisEntity, Scores):
         return None
 
     @override
-    def __aiter__(self) -> AsyncIterator[str]:
-        return self.values()
+    def values(self, *, reverse: bool = False) -> Awaitable[Sequence[str]]:
+        return self._redis_db.zrange(self._key_path, 0, -1, desc=reverse)
 
     @override
-    # pylint: disable=invalid-overridden-method
-    async def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
-        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse):
-            yield _
-
-    @override
-    # pylint: disable=invalid-overridden-method
-    async def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
-        for _ in await self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True):
-            yield _
+    def scores(self, *, reverse: bool = False) -> Awaitable[Sequence[tuple[str, float]]]:
+        return self._redis_db.zrange(self._key_path, 0, -1, desc=reverse, withscores=True)
 
     @override
     async def index(self, key: str, *, reverse: bool = False) -> int | None:
@@ -51,8 +44,8 @@ class RedisScores(RedisEntity, Scores):
         return await self._redis_db.zcard(self._key_path)
 
     @override
-    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> None:
-        await self._redis_db.zadd(self._key_path, {key: score}, xx=xx, nx=nx)
+    async def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False) -> bool:
+        return bool(await self._redis_db.zadd(self._key_path, {key: score}, xx=xx, nx=nx))
 
     @override
     async def remove(self, key: str) -> bool:
