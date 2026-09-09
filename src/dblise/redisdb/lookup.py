@@ -1,5 +1,8 @@
 
+from collections.abc import Awaitable
 from typing import override
+
+from redis.asyncio import client
 
 from dblise.schemas import Fields
 from dblise.schemas import Record
@@ -27,15 +30,25 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
     def lookup(self, key: str) -> Record[FieldsT]:
         return RedisRecord(self._redis_db, f'{self._key_path}:{key}', self._converts)
 
-    @override
-    async def exists(self) -> bool:
+    async def _exists(self) -> bool:
         async for _ in self._redis_db.scan_iter(self._key_glob):
             return True
         return False
 
     @override
-    async def delete(self) -> bool:
+    def exists(self) -> Awaitable[bool]:
+        if isinstance(self._redis_db, client.Pipeline):
+            raise NotImplementedError
+        return self._exists()
+
+    async def _delete(self) -> bool:
         keys = [_ async for _ in self._redis_db.scan_iter(self._key_glob)]
         if keys:
             await self._redis_db.unlink(*keys)
         return bool(keys)
+
+    @override
+    def delete(self) -> Awaitable[bool]:
+        if isinstance(self._redis_db, client.Pipeline):
+            raise NotImplementedError
+        return self._delete()
