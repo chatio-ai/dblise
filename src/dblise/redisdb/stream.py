@@ -1,5 +1,7 @@
 
-from collections.abc import AsyncIterator
+from collections.abc import Awaitable
+from collections.abc import Sequence
+from collections.abc import Callable
 
 from typing import override
 
@@ -26,33 +28,15 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
     async def len(self) -> int:
         return await self._redis_db.xlen(self._key_path)
 
-    @override
-    def __aiter__(self) -> AsyncIterator[FieldsT]:
-        return self.values()
-
-    @override
-    # pylint: disable=invalid-overridden-method
-    async def values(
+    async def _range[ValueT](
         self,
         min_id: str | None = None,
         max_id: str | None = None,
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[FieldsT]:
-        async for _, value in self.items(min_id, max_id, count, reverse=reverse):
-            yield value
-
-    @override
-    # pylint: disable=invalid-overridden-method
-    async def items(
-        self,
-        min_id: str | None = None,
-        max_id: str | None = None,
-        count: int | None = None,
-        *,
-        reverse: bool = False,
-    ) -> AsyncIterator[tuple[str, FieldsT]]:
+        convert: Callable[[str, FieldsT], ValueT],
+    ) -> Sequence[ValueT]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -61,8 +45,30 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
             min_id, max_id = max_id, min_id
 
         xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
-        for key, mapping in await xrange(self._key_path, min_id, max_id, count=count):
-            yield key, self._converts.deserialize(mapping)
+        result = await xrange(self._key_path, min_id, max_id, count=count)
+        return [convert(k, self._converts.deserialize(v)) for k, v in result]
+
+    @override
+    def values(
+        self,
+        min_id: str | None = None,
+        max_id: str | None = None,
+        count: int | None = None,
+        *,
+        reverse: bool = False,
+    ) -> Awaitable[Sequence[FieldsT]]:
+        return self._range(min_id, max_id, count, reverse=reverse, convert=lambda _, v: v)
+
+    @override
+    def items(
+        self,
+        min_id: str | None = None,
+        max_id: str | None = None,
+        count: int | None = None,
+        *,
+        reverse: bool = False,
+    ) -> Awaitable[Sequence[tuple[str, FieldsT]]]:
+        return self._range(min_id, max_id, count, reverse=reverse, convert=lambda k, v: (k, v))
 
     @override
     async def append(self, value: FieldsT, entry_id: str = '*') -> str:
