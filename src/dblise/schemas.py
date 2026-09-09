@@ -2,9 +2,8 @@
 from abc import ABC, abstractmethod
 
 from collections.abc import AsyncGenerator
-from collections.abc import AsyncIterator
-from collections.abc import AsyncIterable
 from collections.abc import Awaitable
+from collections.abc import Sequence
 
 from contextlib import asynccontextmanager
 
@@ -58,13 +57,13 @@ class Lookup[FieldsT](Entity, ABC):
         ...
 
 
-class Scores(Entity, AsyncIterable[str], ABC):
+class Scores(Entity, ABC):
     @abstractmethod
-    def values(self, *, reverse: bool = False) -> AsyncIterator[str]:
+    def values(self, *, reverse: bool = False) -> Awaitable[Sequence[str]]:
         ...
 
     @abstractmethod
-    def scores(self, *, reverse: bool = False) -> AsyncIterator[tuple[str, float]]:
+    def scores(self, *, reverse: bool = False) -> Awaitable[Sequence[tuple[str, float]]]:
         ...
 
     @abstractmethod
@@ -85,7 +84,7 @@ class Scores(Entity, AsyncIterable[str], ABC):
 
     @abstractmethod
     def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False,
-               ) -> Awaitable[None]:
+               ) -> Awaitable[bool]:
         ...
 
     @abstractmethod
@@ -93,7 +92,7 @@ class Scores(Entity, AsyncIterable[str], ABC):
         ...
 
 
-class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
+class Stream[FieldsT](Entity, ABC):
     @abstractmethod
     def items(
         self,
@@ -102,7 +101,7 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[tuple[str, FieldsT]]:
+    ) -> Awaitable[Sequence[tuple[str, FieldsT]]]:
         ...
 
     @abstractmethod
@@ -113,7 +112,7 @@ class Stream[FieldsT](Entity, AsyncIterable[FieldsT], ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> AsyncIterator[FieldsT]:
+    ) -> Awaitable[Sequence[FieldsT]]:
         ...
 
     @abstractmethod
