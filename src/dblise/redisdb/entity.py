@@ -21,8 +21,8 @@ class RedisEntity(Entity):
 
     @override
     def exists(self) -> Awaitable[bool]:
-        return RedisResult(self._engine, self._engine.client.exists(self._key_path), bool)
+        return RedisResult(self._engine, lambda redis: redis.exists(self._key_path), bool)
 
     @override
     def delete(self) -> Awaitable[bool]:
-        return RedisResult(self._engine, self._engine.client.unlink(self._key_path), bool)
+        return RedisResult(self._engine, lambda redis: redis.unlink(self._key_path), bool)

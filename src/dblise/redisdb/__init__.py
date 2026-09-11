@@ -73,14 +73,14 @@ class RedisFacade(Facade):
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
             return RedisResult.pure(self._engine, self._redis_db, value=False)
-        return RedisResult(self._engine, self._redis_db.exists(*keys), bool)
+        return RedisResult(self._engine, lambda redis: redis.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
             return RedisResult.pure(self._engine, self._redis_db, value=False)
-        return RedisResult(self._engine, self._redis_db.unlink(*keys), bool)
+        return RedisResult(self._engine, lambda redis: redis.unlink(*keys), bool)
 
     @override
     @asynccontextmanager

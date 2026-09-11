@@ -27,7 +27,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def len(self) -> Awaitable[int]:
-        return RedisResult.same(self._engine, self._engine.client.xlen(self._key_path))
+        return RedisResult.same(self._engine, lambda redis: redis.xlen(self._key_path))
 
     def _range[ValueT](
         self,
@@ -45,10 +45,10 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         if reverse:
             min_id, max_id = max_id, min_id
 
-        xrange = self._engine.client.xrevrange if reverse else self._engine.client.xrange
         return RedisResult(
             self._engine,
-            xrange(self._key_path, min_id, max_id, count=count),
+            lambda redis: (redis.xrevrange if reverse else redis.xrange)(
+                self._key_path, min_id, max_id, count=count),
             lambda result: [convert(k, self._converts.deserialize(v)) for k, v in result])
 
     @override
@@ -77,9 +77,9 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
     def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
         return RedisResult.same(
             self._engine,
-            self._engine.client.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
+            lambda redis: redis.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
     def remove(self, entry_id: str) -> Awaitable[bool]:
         return RedisResult(
-            self._engine, self._engine.client.xdel(self._key_path, entry_id), bool)
+            self._engine, lambda redis: redis.xdel(self._key_path, entry_id), bool)
