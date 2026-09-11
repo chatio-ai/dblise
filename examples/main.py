@@ -67,10 +67,8 @@ async def main() -> None:
 
     ##
 
-    async def obtain(record: Record[Data]) -> Data:
-        return await record.value()
-
-    def modify(data: Data, record: Record[Data]) -> None:
+    async def modify(record: Record[Data]) -> None:
+        data = await record.value()
         data.data += 1
         record.assign(data)
 
@@ -78,7 +76,7 @@ async def main() -> None:
     await record.delete()
 
     assert await record.value() == Data(0)
-    await facade.atomic(obtain, modify, record, watches=[record])
+    await facade.atomic(modify, record, watches=[record])
     assert await record.value() == Data(1)
 
 
