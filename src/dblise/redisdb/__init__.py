@@ -1,4 +1,6 @@
 
+from collections.abc import Iterable
+from collections.abc import Callable
 from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -6,6 +8,7 @@ from contextlib import asynccontextmanager
 from typing import override
 from typing import cast
 
+from redis.exceptions import WatchError
 from redis.asyncio import client
 
 from dblise.schemas import Fields
@@ -95,3 +98,17 @@ class RedisFacade(Facade):
 
             yield cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
             await pipeline.execute()
+
+    async def atomic[ValueT](
+        self,
+        func: Callable[[], Awaitable[ValueT]],
+        watches: Iterable[Entity] = (),
+    ) -> ValueT:
+        async with self._redis_db.pipeline(transaction=True) as pipeline:
+            while True:
+                try:
+                    if watches:
+                        await pipeline.watch(*[_.handle for _ in watches])
+                    return await func()
+                except WatchError:
+                    continue
