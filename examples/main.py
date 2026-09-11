@@ -17,6 +17,11 @@ from dblise.redisdb import RedisFacade
 
 
 @dataclass
+class Data(Fields):
+    data: int
+
+
+@dataclass
 class Test(Fields):
     data: str
 
@@ -44,11 +49,15 @@ async def main() -> None:
     await schema.test.assign(Test('test'))
     assert await schema.test.value() == Test('test')
 
+    ##
+
     async with facade.pipeline(schema.test) as (test,):
         test.value()
         test.assign(Test('hello'))
 
     assert await schema.test.value() == Test('hello')
+
+    ##
 
     async with facade.pipeline(schema) as (schema_,):
         schema_.test.value()
@@ -56,12 +65,30 @@ async def main() -> None:
 
     assert await schema.test.value() == Test('world')
 
+    ##
+
     async with facade.pipeline(schema.test1, schema.test2) as (test1, test2):
         test1.assign(Test('hello'))
         test2.assign(Test('world'))
 
     assert await schema.test1.value() == Test('hello')
     assert await schema.test2.value() == Test('world')
+
+    ##
+
+    async def obtain(record: Record[Data]) -> Data:
+        return await record.value()
+
+    def modify(data: Data, record: Record[Data]) -> None:
+        data.data += 1
+        record.assign(data)
+
+    record = facade.entity('test:data', Record[Data])    # type: ignore[type-abstract]
+    await record.delete()
+
+    assert await record.value() == Data(0)
+    await facade.atomic(obtain, modify, record, watches=[record])
+    assert await record.value() == Data(1)
 
 
 if __name__ == '__main__':

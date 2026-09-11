@@ -1,11 +1,13 @@
 
+from collections.abc import Iterable
+from collections.abc import Callable
 from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from typing import override
-from typing import cast
 
+from redis.exceptions import WatchError
 from redis.asyncio import client
 
 from dblise.schemas import Fields
@@ -84,11 +86,34 @@ class RedisFacade(Facade):
             raise TypeError
         async with self._redis_db.pipeline(transaction=transaction) as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-
-            def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
-                if not isinstance(obj, Entity | Schema):
-                    raise TypeError(obj)
-                return facade.rebind(obj)
-
-            yield cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
+            yield facade.rebinds(*objs)
             await pipeline.execute()
+
+    @override
+    async def atomic[ValueT, *ObjectTs](
+        self,
+        read_fn: Callable[[*ObjectTs], Awaitable[ValueT]],
+        write_fn: Callable[[ValueT, *ObjectTs], None],
+        *objs: *ObjectTs,
+        watches: Iterable[Entity] | None = None,
+    ) -> None:
+        if isinstance(self._redis_db, client.Pipeline):
+            raise TypeError
+        if watches is None:
+            watches = entities(*objs)
+        keys = [_.handle for _ in watches]
+        if not keys:
+            raise ValueError
+        while True:
+            try:
+                async with self._redis_db.pipeline() as pipeline:
+                    facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
+                    objs_ = facade.rebinds(*objs)
+                    await pipeline.watch(*keys)
+                    data = await read_fn(*objs_)
+                    pipeline.multi()
+                    write_fn(data, *objs_)
+                    await pipeline.execute()
+            except WatchError:
+                continue
+            return

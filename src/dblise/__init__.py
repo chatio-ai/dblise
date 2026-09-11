@@ -1,5 +1,7 @@
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
+from collections.abc import Callable
 from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -70,6 +72,14 @@ class Facade(ABC):
 
         return type(obj)(**result)
 
+    def rebinds[*ObjectTs](self, *objs: *ObjectTs) -> tuple[*ObjectTs]:
+        def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
+            if not isinstance(obj, Entity | Schema):
+                raise TypeError(obj)
+            return self.rebind(obj)
+
+        return cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
+
     def entity[EntityT: Entity](self, handle: str, entity: type[EntityT]) -> EntityT:
         type_id = typing.KeyTypeId.parse(entity)
         return cast(EntityT, self._entity(handle, type_id))
@@ -93,4 +103,14 @@ class Facade(ABC):
     @asynccontextmanager
     def pipeline[*ObjectTs](
             self, *objs: *ObjectTs, transaction: bool = True) -> AsyncGenerator[tuple[*ObjectTs]]:
+        ...
+
+    @abstractmethod
+    async def atomic[ValueT, *ObjectTs](
+        self,
+        read_fn: Callable[[*ObjectTs], Awaitable[ValueT]],
+        write_fn: Callable[[ValueT, *ObjectTs], None],
+        *objs: *ObjectTs,
+        watches: Iterable[Entity] | None = None,
+    ) -> None:
         ...
