@@ -21,6 +21,7 @@ from dblise import Facade
 
 from .common import Redis
 from .result import RedisResult
+from .result import RedisBroker
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
 from .record import RedisRecord
@@ -40,27 +41,32 @@ class RedisFacade(Facade):
         if redis_db is None:
             redis_db = client.Redis(host=host, port=port, db=0, decode_responses=True)
 
+        self._broker = RedisBroker(redis_db)
         self._redis_db = redis_db
         self._n_digits = n_digits
+
+    @property
+    def broker(self) -> RedisBroker:
+        return self._broker
 
     def _codec[FieldsT: Fields](self, fields: type[FieldsT]) -> RedisCodecs[FieldsT]:
         return RedisCodecs(fields, self._n_digits)
 
     @override
     def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
-        return RedisRecord(self._redis_db, handle, self._codec(fields))
+        return RedisRecord(self._broker, handle, self._codec(fields))
 
     @override
     def lookup[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
-        return RedisLookup(self._redis_db, handle, self._codec(fields))
+        return RedisLookup(self._broker, handle, self._codec(fields))
 
     @override
     def scores(self, handle: str) -> Scores:
-        return RedisScores(self._redis_db, handle)
+        return RedisScores(self._broker, handle)
 
     @override
     def stream[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Stream[FieldsT]:
-        return RedisStream(self._redis_db, handle, self._codec(fields))
+        return RedisStream(self._broker, handle, self._codec(fields))
 
     @override
     def handle(self, parent: str, child: str) -> str:
@@ -70,15 +76,15 @@ class RedisFacade(Facade):
     def exists(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._redis_db, value=False)
-        return RedisResult(self._redis_db.exists(*keys), bool)
+            return RedisResult.pure(self._broker, value=False)
+        return RedisResult(self._broker, lambda redis: redis.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._redis_db, value=False)
-        return RedisResult(self._redis_db.unlink(*keys), bool)
+            return RedisResult.pure(self._broker, value=False)
+        return RedisResult(self._broker, lambda redis: redis.unlink(*keys), bool)
 
     @override
     @asynccontextmanager
@@ -90,17 +96,19 @@ class RedisFacade(Facade):
         async with self._redis_db.pipeline(transaction=transaction) as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
             yield facade.rebinds(*objs)
+            await facade.broker.commit()
             await pipeline.execute()
 
     async def atomic[ValueT, *ObjectTs](
         self,
-        read_fn: Callable[[*ObjectTs], Awaitable[ValueT]],
-        write_fn: Callable[[ValueT, *ObjectTs], None],
+        func: Callable[[*ObjectTs], Awaitable[ValueT]],
         *objs: *ObjectTs,
-        watches: Iterable[Entity] = (),
-    ) -> None:
+        watches: Iterable[Entity] | None = None,
+    ) -> ValueT:
         if isinstance(self._redis_db, client.Pipeline):
             raise TypeError
+        if watches is None:
+            watches = self._entities(*objs)
         keys = [_.handle for _ in watches]
         if not keys:
             raise ValueError
@@ -108,12 +116,11 @@ class RedisFacade(Facade):
             try:
                 async with self._redis_db.pipeline() as pipeline:
                     facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-                    objs_ = facade.rebinds(*objs)
                     await pipeline.watch(*keys)
-                    data = await read_fn(*objs_)
+                    value = await func(*facade.rebinds(*objs))
                     pipeline.multi()
-                    write_fn(data, *objs_)
+                    await facade.broker.commit()
                     await pipeline.execute()
             except WatchError:
                 continue
-            return
+            return value

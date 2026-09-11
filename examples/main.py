@@ -65,22 +65,6 @@ async def main() -> None:
     assert await schema.test1.value() == Test('hello')
     assert await schema.test2.value() == Test('world')
 
-    ##
-
-    async def obtain(record: Record[Data]) -> Data:
-        return await record.value()
-
-    def modify(data: Data, record: Record[Data]) -> None:
-        data.data += 1
-        record.assign(data)
-
-    record = facade.entity('test:data', Record[Data])    # type: ignore[type-abstract]
-    await record.delete()
-
-    assert await record.value() == Data(0)
-    await facade.atomic(obtain, modify, record, watches=[record])
-    assert await record.value() == Data(1)
-
 
 if __name__ == '__main__':
     asyncio.run(main())

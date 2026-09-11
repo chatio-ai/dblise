@@ -1,6 +1,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable
+from collections.abc import Iterator
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -76,6 +77,16 @@ class Facade(ABC):
             return self.rebind(obj)
 
         return cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
+
+    @staticmethod
+    def _entities(*objs: object) -> Iterator[Entity]:
+        for obj in objs:
+            if isinstance(obj, Entity):
+                yield obj
+            elif isinstance(obj, Schema):
+                yield from obj
+            else:
+                raise TypeError(obj)
 
     def entity[EntityT: Entity](self, handle: str, entity: type[EntityT]) -> EntityT:
         type_id = typing.KeyTypeId.parse(entity)
