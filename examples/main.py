@@ -27,9 +27,6 @@ async def main() -> None:
     facade = RedisFacade()
     schema = facade.schema('test', Tests)
 
-    record = facade.entity('test', Record[Test])    # type: ignore[type-abstract]
-    await record.delete()
-
     for op in schema(lambda _, entity: entity.delete()):
         await op
 
@@ -38,11 +35,15 @@ async def main() -> None:
     await schema.test.assign(Test('test'))
     assert await schema.test.value() == Test('test')
 
+    ##
+
     async with facade.pipeline(schema.test) as (test,):
         test.value()
         test.assign(Test('hello'))
 
     assert await schema.test.value() == Test('hello')
+
+    ##
 
     async with facade.pipeline(schema) as (schema_,):
         schema_.test.value()
@@ -50,12 +51,27 @@ async def main() -> None:
 
     assert await schema.test.value() == Test('world')
 
+    ##
+
     async with facade.pipeline(schema.test1, schema.test2) as (test1, test2):
         test1.assign(Test('hello'))
         test2.assign(Test('world'))
 
     assert await schema.test1.value() == Test('hello')
     assert await schema.test2.value() == Test('world')
+
+    ##
+
+    async def modify(record: Record[Test]) -> None:
+        record.value()
+        record.assign(Test('atomic'))
+
+    record = facade.entity('test', Record[Test])    # type: ignore[type-abstract]
+    await record.delete()
+
+    await facade.atomic(modify, record, watches=[record])
+
+    assert await record.value() == Test('atomic')
 
 
 if __name__ == '__main__':

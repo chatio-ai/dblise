@@ -69,6 +69,14 @@ class Facade(ABC):
 
         return type(obj)(**result)
 
+    def rebinds[*ObjectTs](self, *objs: *ObjectTs) -> tuple[*ObjectTs]:
+        def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
+            if not isinstance(obj, Entity | Schema):
+                raise TypeError(obj)
+            return self.rebind(obj)
+
+        return cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
+
     def entity[EntityT: Entity](self, handle: str, entity: type[EntityT]) -> EntityT:
         type_id = typing.KeyTypeId.parse(entity)
         return cast(EntityT, self._entity(handle, type_id))

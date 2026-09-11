@@ -6,7 +6,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from typing import override
-from typing import cast
 
 from redis.exceptions import WatchError
 from redis.asyncio import client
@@ -90,25 +89,25 @@ class RedisFacade(Facade):
             raise TypeError
         async with self._redis_db.pipeline(transaction=transaction) as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-
-            def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
-                if not isinstance(obj, Entity | Schema):
-                    raise TypeError(obj)
-                return facade.rebind(obj)
-
-            yield cast(tuple[*ObjectTs], tuple(_rebind(obj) for obj in objs))
+            yield facade.rebinds(*objs)
             await pipeline.execute()
 
-    async def atomic[ValueT](
+    async def atomic[ValueT, *ObjectTs](
         self,
-        func: Callable[[], Awaitable[ValueT]],
+        func: Callable[[*ObjectTs], Awaitable[ValueT]],
+        *rebinds: *ObjectTs,
         watches: Iterable[Entity] = (),
     ) -> ValueT:
-        async with self._redis_db.pipeline(transaction=True) as pipeline:
-            while True:
+        while True:
+            async with self._redis_db.pipeline() as pipeline:
+                facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
                 try:
                     if watches:
                         await pipeline.watch(*[_.handle for _ in watches])
-                    return await func()
+                    pipeline.multi()
+                    result = await func(*facade.rebinds(*rebinds))
+                    await pipeline.execute()
                 except WatchError:
                     continue
+                else:
+                    return result
