@@ -12,6 +12,11 @@ from dblise.redisdb import RedisFacade
 
 
 @dataclass
+class Data(Fields):
+    data: int
+
+
+@dataclass
 class Test(Fields):
     data: str
 
@@ -62,16 +67,19 @@ async def main() -> None:
 
     ##
 
-    async def modify(record: Record[Test]) -> None:
-        record.value()
-        record.assign(Test('atomic'))
+    async def obtain(record: Record[Data]) -> Data:
+        return await record.value()
 
-    record = facade.entity('test', Record[Test])    # type: ignore[type-abstract]
+    def modify(data: Data, record: Record[Data]) -> None:
+        data.data += 1
+        record.assign(data)
+
+    record = facade.entity('test:data', Record[Data])    # type: ignore[type-abstract]
     await record.delete()
 
-    await facade.atomic(modify, record, watches=[record])
-
-    assert await record.value() == Test('atomic')
+    assert await record.value() == Data(0)
+    await facade.atomic(obtain, modify, record, watches=[record])
+    assert await record.value() == Data(1)
 
 
 if __name__ == '__main__':

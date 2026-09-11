@@ -94,20 +94,24 @@ class RedisFacade(Facade):
 
     async def atomic[ValueT, *ObjectTs](
         self,
-        func: Callable[[*ObjectTs], Awaitable[ValueT]],
+        read_fn: Callable[[*ObjectTs], Awaitable[ValueT]],
+        write_fn: Callable[[ValueT, *ObjectTs], None],
         *rebinds: *ObjectTs,
         watches: Iterable[Entity] = (),
-    ) -> ValueT:
+    ) -> None:
+        if not watches:
+            raise RuntimeError
         while True:
             async with self._redis_db.pipeline() as pipeline:
                 facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
+                rebinds_ = facade.rebinds(*rebinds)
                 try:
-                    if watches:
-                        await pipeline.watch(*[_.handle for _ in watches])
+                    await pipeline.watch(*[_.handle for _ in watches])
+                    data = await read_fn(*rebinds_)
                     pipeline.multi()
-                    result = await func(*facade.rebinds(*rebinds))
+                    write_fn(data, *rebinds_)
                     await pipeline.execute()
                 except WatchError:
                     continue
                 else:
-                    return result
+                    break
