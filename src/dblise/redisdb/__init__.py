@@ -81,10 +81,11 @@ class RedisFacade(Facade):
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
-    async def pipeline[*ObjectTs](self, *objs: *ObjectTs) -> AsyncGenerator[tuple[*ObjectTs]]:
+    async def pipeline[*ObjectTs](
+            self, *objs: *ObjectTs, transaction: bool = True) -> AsyncGenerator[tuple[*ObjectTs]]:
         if isinstance(self._redis_db, client.Pipeline):
             raise TypeError
-        async with self._redis_db.pipeline() as pipeline:
+        async with self._redis_db.pipeline(transaction=transaction) as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
 
             def _rebind[ObjectT](obj: ObjectT) -> ObjectT:
