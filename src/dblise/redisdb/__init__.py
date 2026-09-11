@@ -21,6 +21,7 @@ from dblise import Facade
 
 from .common import Redis
 from .result import RedisResult
+from .result import RedisEngine
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
 from .record import RedisRecord
@@ -40,6 +41,7 @@ class RedisFacade(Facade):
         if redis_db is None:
             redis_db = client.Redis(host=host, port=port, db=0, decode_responses=True)
 
+        self._engine = RedisEngine(redis_db)
         self._redis_db = redis_db
         self._n_digits = n_digits
 
@@ -48,19 +50,19 @@ class RedisFacade(Facade):
 
     @override
     def record[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Record[FieldsT]:
-        return RedisRecord(self._redis_db, handle, self._codec(fields))
+        return RedisRecord(self._engine, handle, self._codec(fields))
 
     @override
     def lookup[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Lookup[FieldsT]:
-        return RedisLookup(self._redis_db, handle, self._codec(fields))
+        return RedisLookup(self._engine, handle, self._codec(fields))
 
     @override
     def scores(self, handle: str) -> Scores:
-        return RedisScores(self._redis_db, handle)
+        return RedisScores(self._engine, handle)
 
     @override
     def stream[FieldsT: Fields](self, handle: str, fields: type[FieldsT]) -> Stream[FieldsT]:
-        return RedisStream(self._redis_db, handle, self._codec(fields))
+        return RedisStream(self._engine, handle, self._codec(fields))
 
     @override
     def handle(self, parent: str, child: str) -> str:
@@ -70,15 +72,15 @@ class RedisFacade(Facade):
     def exists(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._redis_db, value=False)
-        return RedisResult(self._redis_db.exists(*keys), bool)
+            return RedisResult.pure(self._engine, self._redis_db, value=False)
+        return RedisResult(self._engine, self._redis_db.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._redis_db, value=False)
-        return RedisResult(self._redis_db.unlink(*keys), bool)
+            return RedisResult.pure(self._engine, self._redis_db, value=False)
+        return RedisResult(self._engine, self._redis_db.unlink(*keys), bool)
 
     @override
     @asynccontextmanager

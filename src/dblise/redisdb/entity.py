@@ -4,14 +4,14 @@ from typing import override
 
 from dblise.schemas import Entity
 
-from .common import Redis
 from .result import RedisResult
+from .result import RedisEngine
 
 
 class RedisEntity(Entity):
 
-    def __init__(self, redis_db: Redis, key_path: str) -> None:
-        self._redis_db = redis_db
+    def __init__(self, engine: RedisEngine, key_path: str) -> None:
+        self._engine = engine
         self._key_path = key_path
 
     @property
@@ -21,8 +21,8 @@ class RedisEntity(Entity):
 
     @override
     def exists(self) -> Awaitable[bool]:
-        return RedisResult(self._redis_db.exists(self._key_path), bool)
+        return RedisResult(self._engine, self._engine.client.exists(self._key_path), bool)
 
     @override
     def delete(self) -> Awaitable[bool]:
-        return RedisResult(self._redis_db.unlink(self._key_path), bool)
+        return RedisResult(self._engine, self._engine.client.unlink(self._key_path), bool)

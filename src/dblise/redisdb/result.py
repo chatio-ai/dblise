@@ -7,14 +7,28 @@ from collections.abc import Callable
 
 from redis.asyncio import client
 
+from .common import Redis
+
+
+# pylint: disable=too-few-public-methods
+class RedisEngine:
+    def __init__(self, redis_db: Redis) -> None:
+        self._redis_db = redis_db
+
+    @property
+    def client(self) -> Redis:
+        return self._redis_db
+
 
 # pylint: disable=too-few-public-methods
 class RedisResult[ValueT](Awaitable[ValueT]):
     def __init__[RawValueT](
         self,
+        engine: RedisEngine,
         invoke: Awaitable[RawValueT],
         decode: Callable[[RawValueT], ValueT],
     ) -> None:
+        self._engine = engine
         self._invoke = invoke
         self._decode = decode
 
@@ -27,13 +41,16 @@ class RedisResult[ValueT](Awaitable[ValueT]):
         return self._resolve().__await__()
 
     @staticmethod
-    def same[RawValueT](invoke: Awaitable[RawValueT]) -> RedisResult[RawValueT]:
-        return RedisResult(invoke, lambda value: value)
+    def same[RawValueT](
+            engine: RedisEngine, invoke: Awaitable[RawValueT]) -> RedisResult[RawValueT]:
+        return RedisResult(engine, invoke, lambda value: value)
 
     @staticmethod
-    def void(invoke: Awaitable[object]) -> RedisResult[None]:
-        return RedisResult(invoke, lambda _: None)
+    def void(engine: RedisEngine, invoke: Awaitable[object]) -> RedisResult[None]:
+        return RedisResult(engine, invoke, lambda _: None)
 
     @staticmethod
-    def pure[RawValueT](invoke: Awaitable[RawValueT], value: ValueT) -> RedisResult[ValueT]:
-        return RedisResult(invoke, lambda _: value)
+    def pure[RawValueT](
+            engine: RedisEngine,
+            invoke: Awaitable[RawValueT], value: ValueT) -> RedisResult[ValueT]:
+        return RedisResult(engine, invoke, lambda _: value)

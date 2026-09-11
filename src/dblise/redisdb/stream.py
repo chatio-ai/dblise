@@ -8,16 +8,16 @@ from typing import override
 from dblise.schemas import Fields
 from dblise.schemas import Stream
 
-from .common import Redis
+from .result import RedisResult
+from .result import RedisEngine
 from .codecs import RedisCodecs
 from .entity import RedisEntity
-from .result import RedisResult
 
 
 class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
-    def __init__(self, redis_db: Redis, key_path: str, converts: RedisCodecs[FieldsT]) -> None:
-        super().__init__(redis_db, key_path)
+    def __init__(self, engine: RedisEngine, key_path: str, converts: RedisCodecs[FieldsT]) -> None:
+        super().__init__(engine, key_path)
         self._converts: RedisCodecs[FieldsT] = converts
 
     @property
@@ -27,7 +27,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def len(self) -> Awaitable[int]:
-        return RedisResult.same(self._redis_db.xlen(self._key_path))
+        return RedisResult.same(self._engine, self._engine.client.xlen(self._key_path))
 
     def _range[ValueT](
         self,
@@ -45,8 +45,9 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         if reverse:
             min_id, max_id = max_id, min_id
 
-        xrange = self._redis_db.xrevrange if reverse else self._redis_db.xrange
+        xrange = self._engine.client.xrevrange if reverse else self._engine.client.xrange
         return RedisResult(
+            self._engine,
             xrange(self._key_path, min_id, max_id, count=count),
             lambda result: [convert(k, self._converts.deserialize(v)) for k, v in result])
 
@@ -74,9 +75,11 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
-        return RedisResult.same(self._redis_db.xadd(
-            self._key_path, self._converts.serialize(value), id=entry_id))
+        return RedisResult.same(
+            self._engine,
+            self._engine.client.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
     def remove(self, entry_id: str) -> Awaitable[bool]:
-        return RedisResult(self._redis_db.xdel(self._key_path, entry_id), bool)
+        return RedisResult(
+            self._engine, self._engine.client.xdel(self._key_path, entry_id), bool)
