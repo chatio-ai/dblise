@@ -108,9 +108,8 @@ class Facade(ABC):
     @abstractmethod
     async def atomic[ValueT, *ObjectTs](
         self,
-        read_fn: Callable[[*ObjectTs], Awaitable[ValueT]],
-        write_fn: Callable[[ValueT, *ObjectTs], None],
+        func: Callable[[*ObjectTs], Awaitable[ValueT]],
         *objs: *ObjectTs,
         watches: Iterable[Entity] | None = None,
-    ) -> None:
+    ) -> ValueT:
         ...
