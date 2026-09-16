@@ -76,6 +76,18 @@ class RedisResult[ValueT](Awaitable[ValueT]):
         return RedisResult(broker, invoke, lambda _: None)
 
     @staticmethod
+    def bulk(broker: RedisBroker, invoke: Invoke[None]) -> RedisResult[None]:
+        if isinstance(broker.client, client.Pipeline):
+            return RedisResult.void(broker, invoke)
+
+        async def _pipe(redis: Redis) -> None:
+            async with redis.pipeline() as pipeline:
+                await invoke(pipeline)
+                await pipeline.execute()
+
+        return RedisResult.void(broker, _pipe)
+
+    @staticmethod
     async def _value(value: ValueT) -> ValueT:
         return value
 

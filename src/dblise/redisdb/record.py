@@ -47,21 +47,11 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
             if missing:
                 await redis.hdel(self._key_path, *missing)
 
-        return RedisResult.void(broker, _func)
+        return RedisResult.bulk(broker, _func)
 
     @override
     def assign(self, value: FieldsT) -> Awaitable[None]:
-        if isinstance(self._broker.client, client.Pipeline):
-            return self._save(self._broker, value)
-
-        async def _pipe(redis: Redis) -> None:
-            async with redis.pipeline() as pipeline:
-                broker = RedisBroker(pipeline)
-                self._save(broker, value)
-                await broker.commit()
-                await pipeline.execute()
-
-        return RedisResult.void(self._broker, _pipe)
+        return self._save(self._broker, value)
 
     @override
     @asynccontextmanager
