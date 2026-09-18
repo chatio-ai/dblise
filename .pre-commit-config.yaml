@@ -1,4 +1,4 @@
-files: ^(examples/|src/|tests/)
+files: ^(src/|tests/)
 repos:
 
   - repo: local
