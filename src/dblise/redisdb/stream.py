@@ -8,7 +8,6 @@ from typing import override
 from dblise.schemas import Fields
 from dblise.schemas import Stream
 
-from .result import RedisResult
 from .result import RedisBroker
 from .codecs import RedisCodecs
 from .entity import RedisEntity
@@ -27,7 +26,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def len(self) -> Awaitable[int]:
-        return RedisResult.same(self._broker, lambda redis: redis.xlen(self._key_path))
+        return self._broker.same(lambda redis: redis.xlen(self._key_path))
 
     def _range[ValueT](
         self,
@@ -45,8 +44,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         if reverse:
             min_id, max_id = max_id, min_id
 
-        return RedisResult(
-            self._broker,
+        return self._broker.cast(
             lambda redis: (redis.xrevrange if reverse else redis.xrange)(
                 self._key_path, min_id, max_id, count=count),
             lambda result: [convert(k, self._converts.deserialize(v)) for k, v in result])
@@ -75,11 +73,9 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
 
     @override
     def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
-        return RedisResult.same(
-            self._broker,
+        return self._broker.same(
             lambda redis: redis.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
     def remove(self, entry_id: str) -> Awaitable[bool]:
-        return RedisResult(
-            self._broker, lambda redis: redis.xdel(self._key_path, entry_id), bool)
+        return self._broker.cast(lambda redis: redis.xdel(self._key_path, entry_id), bool)

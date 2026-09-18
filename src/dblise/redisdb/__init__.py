@@ -20,7 +20,6 @@ from dblise.schemas import Stream
 from dblise import Facade
 
 from .common import Redis
-from .result import RedisResult
 from .result import RedisBroker
 from .codecs import RedisCodecs
 from .lookup import RedisLookup
@@ -76,15 +75,15 @@ class RedisFacade(Facade):
     def exists(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._broker, value=False)
-        return RedisResult(self._broker, lambda redis: redis.exists(*keys), bool)
+            return self._broker.pure(value=False)
+        return self._broker.cast(lambda redis: redis.exists(*keys), bool)
 
     @override
     def delete(self, schema: Schema) -> Awaitable[bool]:
         keys = list(schema(lambda _, entity: entity.handle))
         if not keys:
-            return RedisResult.pure(self._broker, value=False)
-        return RedisResult(self._broker, lambda redis: redis.unlink(*keys), bool)
+            return self._broker.pure(value=False)
+        return self._broker.cast(lambda redis: redis.unlink(*keys), bool)
 
     @override
     @asynccontextmanager
