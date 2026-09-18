@@ -1,6 +1,4 @@
 
-from __future__ import annotations
-
 from collections.abc import Awaitable
 from collections.abc import Generator
 from collections.abc import Callable
@@ -13,84 +11,83 @@ from .common import Redis
 type Invoke[_ValueT] = Callable[[Redis], Awaitable[_ValueT]]
 
 
+class RedisResult[ValueT](Awaitable[ValueT]):
+    def __init__[RawValueT](
+        self,
+        redis_db: Redis,
+        invoke: Invoke[RawValueT],
+        decode: Callable[[RawValueT], ValueT],
+    ) -> None:
+        self._redis_db = redis_db
+        self._invoke = invoke
+        self._decode = decode
+        self._is_awaited = False
+
+    async def invoke(self) -> object:
+        if self._is_awaited:
+            return None
+        return await self._invoke(self._redis_db)
+
+    async def _resolve(self) -> ValueT:
+        return self._decode(await self._invoke(self._redis_db))
+
+    @property
+    def _is_batched(self) -> bool:
+        if not isinstance(self._redis_db, client.Pipeline):
+            return False
+        return not self._redis_db.watching or self._redis_db.explicit_transaction
+
+    def __await__(self) -> Generator[None, None, ValueT]:
+        self._is_awaited = True
+        if self._is_batched:
+            raise TypeError
+        return self._resolve().__await__()
+
+
 class RedisBroker:
     def __init__(self, redis_db: Redis) -> None:
         self._redis_db = redis_db
-        self._op_queue: list[Invoke[object] | None] = []
+        self._results: list[RedisResult[object]] = []
 
     @property
     def client(self) -> Redis:
         return self._redis_db
 
-    @property
-    def is_piped(self) -> bool:
-        if not isinstance(self._redis_db, client.Pipeline):
-            return False
-        return not self._redis_db.watching or self._redis_db.explicit_transaction
-
-    def submit(self, op: Invoke[object]) -> int | None:
-        if not isinstance(self._redis_db, client.Pipeline):
-            return None
-        self._op_queue.append(op)
-        return len(self._op_queue) - 1
-
-    def redeem(self, ticket: int | None) -> None:
-        if ticket is not None:
-            self._op_queue[ticket] = None
-
     async def commit(self) -> None:
-        ops, self._op_queue = self._op_queue, []
-        for op in ops:
-            if op is not None:
-                await op(self._redis_db)
+        results, self._results = self._results, []
+        for result in results:
+            await result.invoke()
 
-
-class RedisResult[ValueT](Awaitable[ValueT]):
-    def __init__[RawValueT](
+    def cast[RawValueT, ValueT](
         self,
-        broker: RedisBroker,
         invoke: Invoke[RawValueT],
         decode: Callable[[RawValueT], ValueT],
-    ) -> None:
-        self._broker = broker
-        self._invoke = invoke
-        self._decode = decode
-        self._ticket = broker.submit(invoke)
+    ) -> RedisResult[ValueT]:
+        result = RedisResult(self._redis_db, invoke, decode)
+        if isinstance(self._redis_db, client.Pipeline):
+            self._results.append(result)
+        return result
 
-    async def _resolve(self) -> ValueT:
-        return self._decode(await self._invoke(self._broker.client))
+    def same[RawValueT](self, invoke: Invoke[RawValueT]) -> RedisResult[RawValueT]:
+        return self.cast(invoke, lambda value: value)
 
-    def __await__(self) -> Generator[None, None, ValueT]:
-        self._broker.redeem(self._ticket)
-        if self._broker.is_piped:
-            raise TypeError
-        return self._resolve().__await__()
+    def void(self, invoke: Invoke[object]) -> RedisResult[None]:
+        return self.cast(invoke, lambda _: None)
 
-    @staticmethod
-    def same[RawValueT](
-            broker: RedisBroker, invoke: Invoke[RawValueT]) -> RedisResult[RawValueT]:
-        return RedisResult(broker, invoke, lambda value: value)
-
-    @staticmethod
-    def void(broker: RedisBroker, invoke: Invoke[object]) -> RedisResult[None]:
-        return RedisResult(broker, invoke, lambda _: None)
-
-    @staticmethod
-    def bulk(broker: RedisBroker, invoke: Invoke[None]) -> RedisResult[None]:
-        if isinstance(broker.client, client.Pipeline):
-            return RedisResult.void(broker, invoke)
+    def bulk(self, invoke: Invoke[None]) -> RedisResult[None]:
+        if isinstance(self._redis_db, client.Pipeline):
+            return self.void(invoke)
 
         async def _pipe(redis: Redis) -> None:
             async with redis.pipeline() as pipeline:
                 await invoke(pipeline)
                 await pipeline.execute()
 
-        return RedisResult.void(broker, _pipe)
+        return self.void(_pipe)
 
     @staticmethod
-    async def _value(value: ValueT) -> ValueT:
+    async def _value[ValueT](value: ValueT) -> ValueT:
         return value
 
-    @staticmethod
-    def pure(broker: RedisBroker, value: ValueT) -> RedisResult[ValueT]:
-        return RedisResult.same(broker, lambda _: RedisResult._value(value))
+    def pure[ValueT](self, value: ValueT) -> RedisResult[ValueT]:
+        return self.same(lambda _: self._value(value))
