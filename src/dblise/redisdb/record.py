@@ -12,7 +12,6 @@ from dblise.schemas import Fields
 from dblise.schemas import Record
 
 from .common import Redis
-from .result import RedisResult
 from .result import RedisBroker
 from .codecs import RedisCodecs
 from .entity import RedisEntity
@@ -30,8 +29,7 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
         return self._converts.data_cls
 
     def _load(self, broker: RedisBroker) -> Awaitable[FieldsT]:
-        return RedisResult(
-            broker, lambda redis: redis.hgetall(self._key_path), self._converts.deserialize)
+        return broker.cast(lambda redis: redis.hgetall(self._key_path), self._converts.deserialize)
 
     @override
     def value(self) -> Awaitable[FieldsT]:
@@ -47,7 +45,7 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
             if missing:
                 await redis.hdel(self._key_path, *missing)
 
-        return RedisResult.bulk(broker, _func)
+        return broker.bulk(_func)
 
     @override
     def assign(self, value: FieldsT) -> Awaitable[None]:
