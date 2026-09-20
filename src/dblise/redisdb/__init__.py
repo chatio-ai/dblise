@@ -29,14 +29,9 @@ class RedisFacade(Facade):
 
     def __init__(
         self,
-        host: str = 'localhost',
-        port: int = 6379,
-        redis_db: Redis | None = None,
+        redis_db: Redis,
         n_digits: int | None = None,
     ) -> None:
-        if redis_db is None:
-            redis_db = client.Redis(host=host, port=port, db=0, decode_responses=True)
-
         self._redis_db = redis_db
         self._n_digits = n_digits
 

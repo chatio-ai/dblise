@@ -6,6 +6,8 @@ import asyncio
 
 from dataclasses import dataclass
 
+from redis.asyncio.client import Redis
+
 from dblise.schemas import Fields
 from dblise.schemas import Record
 from dblise.schemas import Schema
@@ -25,7 +27,7 @@ class Tests(Schema):
 
 
 def _facade() -> Facade:
-    return RedisFacade()
+    return RedisFacade(Redis(host='localhost', port=6379, db=0, decode_responses=True))
 
 
 async def main() -> None:
