@@ -91,8 +91,7 @@ class RedisFacade(Facade):
         async with self._broker.client.pipeline(transaction=transaction) as pipeline:
             facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
             yield facade.rebinds(*objs)
-            await facade.broker.commit()
-            await pipeline.execute()
+            await facade.broker.execute()
 
     @override
     async def atomic[ValueT, *ObjectTs](
@@ -112,11 +111,9 @@ class RedisFacade(Facade):
             try:
                 async with self._broker.client.pipeline() as pipeline:
                     facade = type(self)(redis_db=pipeline, n_digits=self._n_digits)
-                    await pipeline.watch(*keys)
+                    await facade.broker.watch(*keys)
                     value = await func(*facade.rebinds(*objs))
-                    pipeline.multi()
-                    await facade.broker.commit()
-                    await pipeline.execute()
+                    await facade.broker.execute()
             except WatchError:
                 continue
             return value
