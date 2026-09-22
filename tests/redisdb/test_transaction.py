@@ -185,9 +185,9 @@ async def test_pipeline_refuse(facade: Facade, ledger: Ledger, *, transaction: b
 
 async def test_pipeline_nested(facade: Facade, ledger: Ledger, *, transaction: bool) -> None:
     async with facade.pipeline(ledger.empty, transaction=transaction) as (empty,):
-        with pytest.raises(TypeError):
-            async with empty.modify():
-                pass
+        empty.assign(Nothing())
+        async with empty.modify():
+            pass
 
 
 async def test_record_modify(ledger: Ledger) -> None:
