@@ -6,9 +6,14 @@ from collections.abc import Callable
 from redis.asyncio import client
 
 from .common import Redis
+from .common import Pipeline
 
 
 type Invoke[_ValueT] = Callable[[Redis], Awaitable[_ValueT]]
+
+
+def _is_batched(pipeline: Pipeline) -> bool:
+    return not pipeline.watching or pipeline.explicit_transaction
 
 
 class RedisResult[ValueT](Awaitable[ValueT]):
@@ -31,15 +36,9 @@ class RedisResult[ValueT](Awaitable[ValueT]):
     async def _resolve(self) -> ValueT:
         return self._decode(await self._invoke(self._redis_db))
 
-    @property
-    def _is_batched(self) -> bool:
-        if not isinstance(self._redis_db, client.Pipeline):
-            return False
-        return not self._redis_db.watching or self._redis_db.explicit_transaction
-
     def __await__(self) -> Generator[None, None, ValueT]:
         self._is_awaited = True
-        if self._is_batched:
+        if isinstance(self._redis_db, client.Pipeline) and _is_batched(self._redis_db):
             raise TypeError
         return self._resolve().__await__()
 
@@ -53,10 +52,22 @@ class RedisBroker:
     def client(self) -> Redis:
         return self._redis_db
 
-    async def commit(self) -> None:
+    async def watch(self, *keys: str) -> None:
+        if isinstance(self._redis_db, client.Pipeline):
+            await self._redis_db.watch(*keys)
+
+    async def execute(self) -> None:
+        if not isinstance(self._redis_db, client.Pipeline):
+            raise TypeError
+
+        if not _is_batched(self._redis_db):
+            self._redis_db.multi()
+
         results, self._results = self._results, []
         for result in results:
             await result.invoke()
+
+        await self._redis_db.execute()
 
     def cast[RawValueT, ValueT](
         self,

@@ -60,12 +60,10 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
 
         async with self._broker.client.pipeline() as pipeline:
             broker = RedisBroker(pipeline)
-            await pipeline.watch(self._key_path)
+            await broker.watch(self._key_path)
             original = await self._load(broker)
             instance = replace(original)
             yield instance
             if instance != original:
-                pipeline.multi()
                 self._save(broker, instance)
-                await broker.commit()
-                await pipeline.execute()
+            await broker.execute()
