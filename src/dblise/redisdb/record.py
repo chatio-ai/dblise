@@ -2,6 +2,7 @@
 from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from contextlib import nullcontext
 from dataclasses import replace
 
 from typing import override
@@ -51,19 +52,25 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
     def assign(self, value: FieldsT) -> Awaitable[None]:
         return self._save(self._broker, value)
 
+    @asynccontextmanager
+    async def _pipeline(self) -> AsyncGenerator[RedisBroker]:
+        async with self._broker.client.pipeline() as pipeline:
+            broker = RedisBroker(pipeline)
+            yield broker
+            await broker.execute()
+
     @override
     @asynccontextmanager
     # pylint: disable=invalid-overridden-method
     async def modify(self) -> AsyncGenerator[FieldsT]:
-        if isinstance(self._broker.client, client.Pipeline):
-            raise TypeError
-
-        async with self._broker.client.pipeline() as pipeline:
-            broker = RedisBroker(pipeline)
+        async with ((
+            nullcontext(self._broker) if
+            isinstance(self._broker.client, client.Pipeline)
+            else self._pipeline()
+        ) as broker):
             await broker.watch(self._key_path)
             original = await self._load(broker)
             instance = replace(original)
             yield instance
             if instance != original:
                 self._save(broker, instance)
-            await broker.execute()
