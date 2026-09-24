@@ -197,7 +197,14 @@ async def test_pipeline_refuse(facade: Facade, ledger: Ledger, *, transaction: b
         right.assign(Counter(5, note='base'))
 
         with pytest.raises(TypeError):
-            await right.assign(Counter(0))
+            await left.assign(Counter(7))
+
+        assign = right.assign(Counter(7))
+        with pytest.raises(TypeError):
+            await assign
+
+    with pytest.raises(TypeError):
+        await assign
 
     assert await ledger.left.value() == Counter(5, 'extra')
     assert await ledger.right.value() == Counter(5, 'base')
