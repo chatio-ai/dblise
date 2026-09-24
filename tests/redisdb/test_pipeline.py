@@ -110,6 +110,46 @@ async def test_pipeline_entities(facade: Facade, schema: Items, *, transaction: 
     assert await schema.test2.value() == Item('world')
 
 
+async def test_results_caching(schema: Items) -> None:
+    await schema.test1.assign(Item('hello'))
+
+    before = schema.test1.value()
+    exists = schema.test2.exists()
+    assign = schema.test2.assign(Item('world'))
+    after = schema.test2.value()
+    delete = schema.test2.delete()
+
+    assert await before == Item('hello')
+    assert not await exists
+    await assign
+    assert not await exists
+
+    assert await after == Item('world')
+    assert await delete
+    assert await after == Item('world')
+    assert await delete
+
+
+async def test_pipeline_results(facade: Facade, schema: Items, *, transaction: bool) -> None:
+    await schema.test1.assign(Item('hello'))
+    async with facade.pipeline(schema, transaction=transaction) as (schema_,):
+        before = schema_.test1.value()
+        exists = schema_.test2.exists()
+        assign = schema_.test2.assign(Item('world'))
+        after = schema_.test2.value()
+        delete = schema_.test2.delete()
+
+    assert await before == Item('hello')
+    assert not await exists
+    await assign
+    assert not await exists
+
+    assert await after == Item('world')
+    assert await delete
+    assert await after == Item('world')
+    assert await delete
+
+
 async def test_lookup_record(schema: Items) -> None:
     await schema.lookup.lookup('key').assign(Item('found'))
     assert await schema.lookup.lookup('key').value() == Item('found')
