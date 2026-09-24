@@ -126,8 +126,8 @@ class RedisBroker:
         return self.void(_pipe)
 
     @staticmethod
-    async def _value[ValueT](value: ValueT) -> ValueT:
-        return value
+    async def _dummy(_: Redis) -> None:
+        return None
 
     def pure[ValueT](self, value: ValueT) -> Awaitable[ValueT]:
-        return self.same(lambda _: self._value(value))
+        return self.cast(self._dummy, lambda _: value)
