@@ -5,6 +5,8 @@ from collections.abc import Callable
 
 from dataclasses import dataclass
 
+from typing import cast
+
 from redis.asyncio import client
 
 from .common import Redis
@@ -12,6 +14,7 @@ from .common import Pipeline
 
 
 type Invoke[_ValueT] = Callable[[Redis], Awaitable[_ValueT]]
+type Settle = Callable[[*tuple[object, ...]], None]
 
 
 def _is_batched(pipeline: Pipeline) -> bool:
@@ -37,10 +40,17 @@ class RedisResult[ValueT](Awaitable[ValueT]):
         self._result: _ResultValue[ValueT] | None = None
         self._is_awaited = False
 
-    async def invoke(self) -> object:
+    async def submit(self) -> Settle | None:
         if self._is_awaited:
             return None
-        return await self._invoke(self._redis_db)
+
+        await self._invoke(self._redis_db)
+
+        def _settle(*args: object) -> None:
+            decode = cast(Callable[[object], ValueT], self._decode)
+            self._result = _ResultValue(decode(args[0] if args else None))
+
+        return _settle
 
     async def _resolve(self) -> ValueT:
         if self._result is None:
@@ -77,10 +87,16 @@ class RedisBroker:
             self._redis_db.multi()
 
         results, self._results = self._results, []
+        settles: list[tuple[Settle, int, int]] = []
         for result in results:
-            await result.invoke()
+            length = len(self._redis_db.command_stack)
+            settle = await result.submit()
+            if settle is not None:
+                settles.append((settle, length, len(self._redis_db.command_stack)))
 
-        await self._redis_db.execute()
+        replies = await self._redis_db.execute()
+        for settle, start, end in settles:
+            settle(*replies[start:end])
 
     def cast[RawValueT, ValueT](
         self,
