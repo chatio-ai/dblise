@@ -88,7 +88,7 @@ class Scores(Entity, ABC):
         ...
 
     @abstractmethod
-    def remove(self, key: str) -> Awaitable[bool]:
+    def remove(self, *keys: str) -> Awaitable[int]:
         ...
 
 
@@ -124,7 +124,7 @@ class Stream[FieldsT](Entity, ABC):
         ...
 
     @abstractmethod
-    def remove(self, entry_id: str) -> Awaitable[bool]:
+    def remove(self, *entry_ids: str) -> Awaitable[int]:
         ...
 
 

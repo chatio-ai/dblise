@@ -77,5 +77,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
             lambda redis: redis.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
-    def remove(self, entry_id: str) -> Awaitable[bool]:
-        return self._broker.cast(lambda redis: redis.xdel(self._key_path, entry_id), bool)
+    def remove(self, *entry_ids: str) -> Awaitable[int]:
+        if not entry_ids:
+            return self._broker.pure(value=0)
+        return self._broker.same(lambda redis: redis.xdel(self._key_path, *entry_ids))
