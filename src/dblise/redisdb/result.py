@@ -102,19 +102,19 @@ class RedisBroker:
         self,
         invoke: Invoke[RawValueT],
         decode: Callable[[RawValueT], ValueT],
-    ) -> RedisResult[ValueT]:
+    ) -> Awaitable[ValueT]:
         result = RedisResult(self._redis_db, invoke, decode)
         if isinstance(self._redis_db, client.Pipeline):
             self._results.append(result)
         return result
 
-    def same[RawValueT](self, invoke: Invoke[RawValueT]) -> RedisResult[RawValueT]:
+    def same[RawValueT](self, invoke: Invoke[RawValueT]) -> Awaitable[RawValueT]:
         return self.cast(invoke, lambda value: value)
 
-    def void(self, invoke: Invoke[object]) -> RedisResult[None]:
+    def void(self, invoke: Invoke[object]) -> Awaitable[None]:
         return self.cast(invoke, lambda _: None)
 
-    def bulk(self, invoke: Invoke[None]) -> RedisResult[None]:
+    def bulk(self, invoke: Invoke[None]) -> Awaitable[None]:
         if isinstance(self._redis_db, client.Pipeline):
             return self.void(invoke)
 
@@ -129,5 +129,5 @@ class RedisBroker:
     async def _value[ValueT](value: ValueT) -> ValueT:
         return value
 
-    def pure[ValueT](self, value: ValueT) -> RedisResult[ValueT]:
+    def pure[ValueT](self, value: ValueT) -> Awaitable[ValueT]:
         return self.same(lambda _: self._value(value))
