@@ -50,5 +50,7 @@ class RedisScores(RedisEntity, Scores):
                 lambda redis: redis.zadd(self._key_path, {key: score}, xx=xx, nx=nx), bool)
 
     @override
-    def remove(self, key: str) -> Awaitable[bool]:
-        return self._broker.cast(lambda redis: redis.zrem(self._key_path, key), bool)
+    def remove(self, *keys: str) -> Awaitable[int]:
+        if not keys:
+            return self._broker.pure(value=0)
+        return self._broker.same(lambda redis: redis.zrem(self._key_path, *keys))

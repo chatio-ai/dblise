@@ -11,6 +11,7 @@ from redis.asyncio import client
 from dblise.schemas import Fields
 from dblise.schemas import Record
 from dblise.schemas import Lookup
+from dblise.schemas import Stream
 from dblise.schemas import Schema
 
 from dblise.helpers import entities
@@ -32,6 +33,7 @@ class Items(Schema):
     test1: Record[Item]
     test2: Record[Item]
     lookup: Lookup[Item]
+    stream: Stream[Item]
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,24 @@ async def test_pipeline_results(facade: Facade, schema: Items, *, transaction: b
     assert await delete
     assert await after == Item('world')
     assert await delete
+
+
+async def test_pipeline_streams(facade: Facade, schema: Items, *, transaction: bool) -> None:
+    entry1 = await schema.stream.append(Item('entry1'))
+    entry2 = await schema.stream.append(Item('entry2'))
+    entry3 = await schema.stream.append(Item('entry3'))
+    async with facade.pipeline(schema, transaction=transaction) as (schema_,):
+        none = schema_.stream.remove()
+        unit = schema_.stream.remove(entry1)
+        pair = schema_.stream.remove(entry2, entry3)
+        miss = schema_.stream.remove(entry1, entry2, entry3)
+        size = schema_.stream.len()
+
+    assert await none == 0
+    assert await unit == len((entry1,))
+    assert await pair == len((entry2, entry3))
+    assert await miss == 0
+    assert await size == 0
 
 
 async def test_lookup_record(schema: Items) -> None:
