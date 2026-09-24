@@ -3,6 +3,8 @@ from collections.abc import Awaitable
 from collections.abc import Generator
 from collections.abc import Callable
 
+from dataclasses import dataclass
+
 from redis.asyncio import client
 
 from .common import Redis
@@ -16,6 +18,11 @@ def _is_batched(pipeline: Pipeline) -> bool:
     return not pipeline.watching or pipeline.explicit_transaction
 
 
+@dataclass(frozen=True)
+class _ResultValue[ValueT]:
+    value: ValueT
+
+
 class RedisResult[ValueT](Awaitable[ValueT]):
     def __init__[RawValueT](
         self,
@@ -26,6 +33,8 @@ class RedisResult[ValueT](Awaitable[ValueT]):
         self._redis_db = redis_db
         self._invoke = invoke
         self._decode = decode
+
+        self._result: _ResultValue[ValueT] | None = None
         self._is_awaited = False
 
     async def invoke(self) -> object:
@@ -34,12 +43,16 @@ class RedisResult[ValueT](Awaitable[ValueT]):
         return await self._invoke(self._redis_db)
 
     async def _resolve(self) -> ValueT:
-        return self._decode(await self._invoke(self._redis_db))
+        if self._result is None:
+            self._result = _ResultValue(self._decode(await self._invoke(self._redis_db)))
+
+        return self._result.value
 
     def __await__(self) -> Generator[None, None, ValueT]:
-        self._is_awaited = True
-        if isinstance(self._redis_db, client.Pipeline) and _is_batched(self._redis_db):
-            raise TypeError
+        if self._result is None:
+            self._is_awaited = True
+            if isinstance(self._redis_db, client.Pipeline) and _is_batched(self._redis_db):
+                raise TypeError
         return self._resolve().__await__()
 
 
