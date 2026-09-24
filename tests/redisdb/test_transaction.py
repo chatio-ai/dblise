@@ -63,6 +63,10 @@ async def test_empty_assign(facade: Facade, ledger: Ledger, *, transaction: bool
     await ledger.empty.assign(Nothing())
     assert await ledger.empty.value() == Nothing()
 
+    async with ledger.empty.modify():
+        pass
+    assert await ledger.empty.value() == Nothing()
+
     async with facade.pipeline(ledger.empty, transaction=transaction) as (empty,):
         empty.assign(Nothing())
     assert await ledger.empty.value() == Nothing()
@@ -115,7 +119,7 @@ async def test_atomic_transfer(facade: Facade, ledger: Ledger) -> None:
     assert [e.what for e in await ledger.log.values()] == ['debit', 'credit']
 
 
-async def test_atomic_retries(facade: Facade, other_facade: Facade, ledger: Ledger) -> None:
+async def test_assign_retries(facade: Facade, other_facade: Facade, ledger: Ledger) -> None:
     reads: list[int] = []
 
     async def bump(left: Record[Counter]) -> None:
@@ -124,6 +128,22 @@ async def test_atomic_retries(facade: Facade, other_facade: Facade, ledger: Ledg
         if len(reads) == 1:
             await other_facade.record(ledger.left.handle, Counter).assign(Counter(10))
         left.assign(Counter(value.count + 1))
+        assert (await left.value()).count != value.count + 1
+
+    await facade.atomic(bump, ledger.left)
+    assert reads == [0, 10]
+    assert await ledger.left.value() == Counter(11)
+
+
+async def test_modify_retries(facade: Facade, other_facade: Facade, ledger: Ledger) -> None:
+    reads: list[int] = []
+
+    async def bump(left: Record[Counter]) -> None:
+        async with left.modify() as value:
+            reads.append(value.count)
+            if len(reads) == 1:
+                await other_facade.record(ledger.left.handle, Counter).assign(Counter(10))
+            value.count += 1
         assert (await left.value()).count != value.count + 1
 
     await facade.atomic(bump, ledger.left)
@@ -183,11 +203,42 @@ async def test_pipeline_refuse(facade: Facade, ledger: Ledger, *, transaction: b
     assert await ledger.right.value() == Counter(5, 'base')
 
 
-async def test_pipeline_nested(facade: Facade, ledger: Ledger, *, transaction: bool) -> None:
+async def test_nested_modify(facade: Facade, ledger: Ledger, *, transaction: bool) -> None:
     async with facade.pipeline(ledger.empty, transaction=transaction) as (empty,):
         empty.assign(Nothing())
         async with empty.modify():
             pass
+
+    assert await ledger.empty.value() == Nothing()
+
+    async with facade.pipeline(ledger.left, transaction=transaction) as (left,):
+        left.assign(Counter(1, note='old'))
+        async with ledger.right.modify() as right:
+            right.count = 2
+            right.note = 'old'
+
+    assert await ledger.left.value() == Counter(1, note='old')
+    assert await ledger.right.value() == Counter(2, note='old')
+
+
+async def test_nested_raises(facade: Facade, ledger: Ledger, *, transaction: bool) -> None:
+    await ledger.left.assign(Counter(1, note='old'))
+    await ledger.right.assign(Counter(2, note='old'))
+
+    async def _apply() -> None:
+        async with facade.pipeline(ledger.left, transaction=transaction) as (left,):
+            left.assign(Counter(2, note='new'))
+            async with ledger.right.modify() as right:
+                right.count = 1
+                right.note = 'new'
+
+                raise RuntimeError
+
+    with pytest.raises(RuntimeError):
+        await _apply()
+
+    assert await ledger.left.value() == Counter(1, note='old')
+    assert await ledger.right.value() == Counter(2, note='old')
 
 
 async def test_record_modify(ledger: Ledger) -> None:
@@ -196,6 +247,25 @@ async def test_record_modify(ledger: Ledger) -> None:
         right_.count += 41
         right_.note = None
     assert await ledger.right.value() == Counter(42)
+
+
+async def test_modify_atomic(ledger: Ledger, monkeypatch: pytest.MonkeyPatch) -> None:
+    await ledger.right.assign(Counter(1, note='note'))
+
+    def _raise(*args: object, **kwargs: object) -> None:
+        raise NotImplementedError
+
+    async def modify() -> None:
+        async with ledger.right.modify() as right:
+            right.count = 2
+            right.note = None
+
+    with monkeypatch.context() as patch:
+        patch.setattr(redis.Pipeline, 'hdel', _raise)
+        with pytest.raises(RuntimeError):
+            await modify()
+
+    assert await ledger.right.value() == Counter(1, note='note')
 
 
 async def test_modify_conflict(ledger: Ledger, other_facade: Facade) -> None:
