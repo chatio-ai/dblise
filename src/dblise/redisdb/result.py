@@ -9,6 +9,8 @@ from typing import cast
 
 from redis.asyncio import client
 
+from dblise.schemas import Result
+
 from .common import Redis
 from .common import Pipeline
 
@@ -102,19 +104,19 @@ class RedisBroker:
         self,
         invoke: Invoke[RawValueT],
         decode: Callable[[RawValueT], ValueT],
-    ) -> Awaitable[ValueT]:
+    ) -> Result[ValueT]:
         result = RedisResult(self._redis_db, invoke, decode)
         if isinstance(self._redis_db, client.Pipeline):
             self._results.append(result)
         return result
 
-    def same[RawValueT](self, invoke: Invoke[RawValueT]) -> Awaitable[RawValueT]:
+    def same[RawValueT](self, invoke: Invoke[RawValueT]) -> Result[RawValueT]:
         return self.cast(invoke, lambda value: value)
 
-    def void(self, invoke: Invoke[object]) -> Awaitable[None]:
+    def void(self, invoke: Invoke[object]) -> Result[None]:
         return self.cast(invoke, lambda _: None)
 
-    def bulk(self, invoke: Invoke[None]) -> Awaitable[None]:
+    def bulk(self, invoke: Invoke[None]) -> Result[None]:
         if isinstance(self._redis_db, client.Pipeline):
             return self.void(invoke)
 
@@ -129,5 +131,5 @@ class RedisBroker:
     async def _dummy(_: Redis) -> None:
         return None
 
-    def pure[ValueT](self, value: ValueT) -> Awaitable[ValueT]:
+    def pure[ValueT](self, value: ValueT) -> Result[ValueT]:
         return self.cast(self._dummy, lambda _: value)

@@ -18,6 +18,7 @@ from .schemas import Record
 from .schemas import Lookup
 from .schemas import Scores
 from .schemas import Stream
+from .schemas import Result
 
 
 class Facade(ABC):
@@ -92,11 +93,11 @@ class Facade(ABC):
         return schema(**result)
 
     @abstractmethod
-    def exists(self, *objs: Entity | Schema) -> Awaitable[bool]:
+    def exists(self, *objs: Entity | Schema) -> Result[bool]:
         ...
 
     @abstractmethod
-    def delete(self, *objs: Entity | Schema) -> Awaitable[bool]:
+    def delete(self, *objs: Entity | Schema) -> Result[bool]:
         ...
 
     @abstractmethod

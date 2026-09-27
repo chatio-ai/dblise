@@ -1,5 +1,4 @@
 
-from collections.abc import Awaitable
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from contextlib import nullcontext
@@ -11,6 +10,7 @@ from redis.asyncio import client
 
 from dblise.schemas import Fields
 from dblise.schemas import Record
+from dblise.schemas import Result
 
 from .common import Redis
 from .result import RedisBroker
@@ -29,14 +29,14 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
     def fields(self) -> type[FieldsT]:
         return self._converts.data_cls
 
-    def _load(self, broker: RedisBroker) -> Awaitable[FieldsT]:
+    def _load(self, broker: RedisBroker) -> Result[FieldsT]:
         return broker.cast(lambda redis: redis.hgetall(self._key_path), self._converts.deserialize)
 
     @override
-    def value(self) -> Awaitable[FieldsT]:
+    def value(self) -> Result[FieldsT]:
         return self._load(self._broker)
 
-    def _save(self, broker: RedisBroker, instance: FieldsT) -> Awaitable[None]:
+    def _save(self, broker: RedisBroker, instance: FieldsT) -> Result[None]:
         mapping = self._converts.serialize(instance)
         missing = self._converts.missing_at(mapping)
 
@@ -49,7 +49,7 @@ class RedisRecord[FieldsT: Fields](RedisEntity, Record[FieldsT]):
         return broker.bulk(_func)
 
     @override
-    def assign(self, value: FieldsT) -> Awaitable[None]:
+    def assign(self, value: FieldsT) -> Result[None]:
         return self._save(self._broker, value)
 
     @asynccontextmanager

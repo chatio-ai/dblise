@@ -1,8 +1,8 @@
 
-from collections.abc import Awaitable
 from typing import override
 
 from dblise.schemas import Entity
+from dblise.schemas import Result
 
 from .result import RedisBroker
 
@@ -19,9 +19,9 @@ class RedisEntity(Entity):
         return self._key_path
 
     @override
-    def exists(self) -> Awaitable[bool]:
+    def exists(self) -> Result[bool]:
         return self._broker.cast(lambda redis: redis.exists(self._key_path), bool)
 
     @override
-    def delete(self) -> Awaitable[bool]:
+    def delete(self) -> Result[bool]:
         return self._broker.cast(lambda redis: redis.unlink(self._key_path), bool)

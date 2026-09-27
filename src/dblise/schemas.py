@@ -10,6 +10,9 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 
+type Result[ValueT] = Awaitable[ValueT]
+
+
 @dataclass
 class Fields:
     pass
@@ -28,21 +31,21 @@ class Entity(ABC):
         ...
 
     @abstractmethod
-    def exists(self) -> Awaitable[bool]:
+    def exists(self) -> Result[bool]:
         ...
 
     @abstractmethod
-    def delete(self) -> Awaitable[bool]:
+    def delete(self) -> Result[bool]:
         ...
 
 
 class Record[FieldsT](Entity, ABC):
     @abstractmethod
-    def value(self) -> Awaitable[FieldsT]:
+    def value(self) -> Result[FieldsT]:
         ...
 
     @abstractmethod
-    def assign(self, value: FieldsT) -> Awaitable[None]:
+    def assign(self, value: FieldsT) -> Result[None]:
         ...
 
     @abstractmethod
@@ -59,36 +62,36 @@ class Lookup[FieldsT](Entity, ABC):
 
 class Scores(Entity, ABC):
     @abstractmethod
-    def values(self, *, reverse: bool = False) -> Awaitable[Sequence[str]]:
+    def values(self, *, reverse: bool = False) -> Result[Sequence[str]]:
         ...
 
     @abstractmethod
-    def scores(self, *, reverse: bool = False) -> Awaitable[Sequence[tuple[str, float]]]:
+    def scores(self, *, reverse: bool = False) -> Result[Sequence[tuple[str, float]]]:
         ...
 
     @abstractmethod
-    def index(self, key: str, *, reverse: bool = False) -> Awaitable[int | None]:
+    def index(self, key: str, *, reverse: bool = False) -> Result[int | None]:
         ...
 
     @abstractmethod
-    def score(self, key: str) -> Awaitable[float | None]:
+    def score(self, key: str) -> Result[float | None]:
         ...
 
     @abstractmethod
-    def count(self) -> Awaitable[int]:
+    def count(self) -> Result[int]:
         ...
 
     @abstractmethod
-    def len(self) -> Awaitable[int]:
+    def len(self) -> Result[int]:
         ...
 
     @abstractmethod
     def insert(self, key: str, score: float, *, xx: bool = False, nx: bool = False,
-               ) -> Awaitable[bool]:
+               ) -> Result[bool]:
         ...
 
     @abstractmethod
-    def remove(self, *keys: str) -> Awaitable[int]:
+    def remove(self, *keys: str) -> Result[int]:
         ...
 
 
@@ -101,7 +104,7 @@ class Stream[FieldsT](Entity, ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Awaitable[Sequence[tuple[str, FieldsT]]]:
+    ) -> Result[Sequence[tuple[str, FieldsT]]]:
         ...
 
     @abstractmethod
@@ -112,19 +115,19 @@ class Stream[FieldsT](Entity, ABC):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Awaitable[Sequence[FieldsT]]:
+    ) -> Result[Sequence[FieldsT]]:
         ...
 
     @abstractmethod
-    def len(self) -> Awaitable[int]:
+    def len(self) -> Result[int]:
         ...
 
     @abstractmethod
-    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
+    def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
         ...
 
     @abstractmethod
-    def remove(self, *entry_ids: str) -> Awaitable[int]:
+    def remove(self, *entry_ids: str) -> Result[int]:
         ...
 
 

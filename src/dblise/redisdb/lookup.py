@@ -1,5 +1,4 @@
 
-from collections.abc import Awaitable
 from typing import override
 
 from redis.asyncio import client
@@ -7,6 +6,7 @@ from redis.asyncio import client
 from dblise.schemas import Fields
 from dblise.schemas import Record
 from dblise.schemas import Lookup
+from dblise.schemas import Result
 
 from .result import RedisBroker
 from .codecs import RedisCodecs
@@ -36,7 +36,7 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
         return False
 
     @override
-    def exists(self) -> Awaitable[bool]:
+    def exists(self) -> Result[bool]:
         if isinstance(self._broker.client, client.Pipeline):
             raise NotImplementedError
         return self._exists()
@@ -48,7 +48,7 @@ class RedisLookup[FieldsT: Fields](RedisEntity, Lookup[FieldsT]):
         return bool(keys)
 
     @override
-    def delete(self) -> Awaitable[bool]:
+    def delete(self) -> Result[bool]:
         if isinstance(self._broker.client, client.Pipeline):
             raise NotImplementedError
         return self._delete()

@@ -1,5 +1,4 @@
 
-from collections.abc import Awaitable
 from collections.abc import Sequence
 from collections.abc import Callable
 
@@ -7,6 +6,7 @@ from typing import override
 
 from dblise.schemas import Fields
 from dblise.schemas import Stream
+from dblise.schemas import Result
 
 from .result import RedisBroker
 from .codecs import RedisCodecs
@@ -25,7 +25,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         return self._converts.data_cls
 
     @override
-    def len(self) -> Awaitable[int]:
+    def len(self) -> Result[int]:
         return self._broker.same(lambda redis: redis.xlen(self._key_path))
 
     def _range[ValueT](
@@ -36,7 +36,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         *,
         reverse: bool = False,
         convert: Callable[[str, FieldsT], ValueT],
-    ) -> Awaitable[Sequence[ValueT]]:
+    ) -> Result[Sequence[ValueT]]:
         if min_id is None:
             min_id = '-'
         if max_id is None:
@@ -57,7 +57,7 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Awaitable[Sequence[FieldsT]]:
+    ) -> Result[Sequence[FieldsT]]:
         return self._range(min_id, max_id, count, reverse=reverse, convert=lambda _, v: v)
 
     @override
@@ -68,16 +68,16 @@ class RedisStream[FieldsT: Fields](RedisEntity, Stream[FieldsT]):
         count: int | None = None,
         *,
         reverse: bool = False,
-    ) -> Awaitable[Sequence[tuple[str, FieldsT]]]:
+    ) -> Result[Sequence[tuple[str, FieldsT]]]:
         return self._range(min_id, max_id, count, reverse=reverse, convert=lambda k, v: (k, v))
 
     @override
-    def append(self, value: FieldsT, entry_id: str = '*') -> Awaitable[str]:
+    def append(self, value: FieldsT, entry_id: str = '*') -> Result[str]:
         return self._broker.same(
             lambda redis: redis.xadd(self._key_path, self._converts.serialize(value), id=entry_id))
 
     @override
-    def remove(self, *entry_ids: str) -> Awaitable[int]:
+    def remove(self, *entry_ids: str) -> Result[int]:
         if not entry_ids:
             return self._broker.pure(value=0)
         return self._broker.same(lambda redis: redis.xdel(self._key_path, *entry_ids))

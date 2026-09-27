@@ -17,6 +17,7 @@ from dblise.schemas import Record
 from dblise.schemas import Lookup
 from dblise.schemas import Scores
 from dblise.schemas import Stream
+from dblise.schemas import Result
 from dblise import Facade
 
 from dblise.helpers import entities
@@ -68,14 +69,14 @@ class RedisFacade(Facade):
         return f'{parent}:{child}'
 
     @override
-    def exists(self, *objs: Entity | Schema) -> Awaitable[bool]:
+    def exists(self, *objs: Entity | Schema) -> Result[bool]:
         keys = [_.handle for _ in entities(*objs)]
         if not keys:
             return self._broker.pure(value=False)
         return self._broker.cast(lambda redis: redis.exists(*keys), bool)
 
     @override
-    def delete(self, *objs: Entity | Schema) -> Awaitable[bool]:
+    def delete(self, *objs: Entity | Schema) -> Result[bool]:
         keys = [_.handle for _ in entities(*objs)]
         if not keys:
             return self._broker.pure(value=False)
