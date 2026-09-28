@@ -41,3 +41,7 @@ reportUnknownMemberType = false
 [tool.mypy]
 strict = true
 check_untyped_defs = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+filterwarnings = ["error"]
